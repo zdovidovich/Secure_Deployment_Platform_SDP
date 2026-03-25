@@ -1,0 +1,48 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for firewall_setup
+
+
+- name: Validate port
+  assert:
+    that: 
+    - port_to_open >= 0
+    - port_to_open <= 65535
+    fail_msg: "Port is not valid"
+
+- block: #firewalld for RHEL-based systems
+  - name: Ensure firewalld is installed (or install if not)
+    yum: 
+      name: firewalld
+      state: present
+
+  - name: Open port tcp in firewalld
+    firewalld:
+      port: "{{ port_to_open }}/tcp"
+      permanent: true
+      immediate: true
+      state: enabled
+
+  when: ansible_facts.os_family == "RedHat"
+
+- block: # Ufw for debian-based systems
+  - name: Install ufw 
+    apt:
+      name: ufw
+      state: present
+
+  - name: Open stock ssh port tcp in ufw
+    ufw: 
+      rule: allow
+      port: 22
+      proto: tcp
+      state: enabled
+
+  - name: Open port tcp in ufw
+    ufw: 
+      rule: allow
+      port: "{{ port_to_open }}"
+      proto: tcp
+      state: enabled
+
+  when: ansible_facts.os_family == "Debian"

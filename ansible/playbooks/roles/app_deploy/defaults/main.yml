@@ -1,0 +1,10 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for app_deploy
+app_image_path: ""
+app_image_name: ""
+app_container_name: ""
+app_ports:
+  - ""
+app_envs: {} 
+app_volumes: []

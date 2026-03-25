@@ -1,0 +1,122 @@
+#SPDX-License-Identifier: MIT-0
+---
+
+- name: Gather the package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
+# tasks file for docker_install
+- block: # Debian based
+  - name: Delete old docker packages
+    apt: 
+      name: "{{ item }}"
+      state: absent
+    loop: "{{ list_of_packages_to_delete.ubuntu if ansible_facts.distribution == 'Ubuntu' else list_of_packages_to_delete.debian }}"
+    when: "'docker-ce' not in ansible_facts.packages"
+
+  - name: Install necessary packages
+    apt: 
+      name: "{{ item }}"
+      update_cache: true
+    loop:
+      - curl
+      - ca-certificates
+
+  - name: Create directory and change permissions 
+    file:
+      path: /etc/apt/keyrings
+      state: directory
+      mode: 0755
+      owner: root
+      group: root
+
+  - name: Download gpg keys
+    uri:
+      url: "https://download.docker.com/linux/{{ 'ubuntu' if ansible_facts.distribution in ['Ubuntu'] else 'debian'}}/gpg"
+      method: GET
+      dest: /etc/apt/keyrings/docker.asc
+      follow_redirects: safe
+    register: result
+    failed_when: "result.status != 200 and result.status != 304" 
+
+  - name: Change permissions for gpg file
+    file: 
+      path: /etc/apt/keyrings/docker.asc
+      mode: a+r
+      owner: root
+      group: root
+
+  - name: Add repository for docker
+    template: 
+      src: docker.sources.j2
+      dest: /etc/apt/sources.list.d/docker.sources 
+
+  - name: Update repositories
+    apt:
+      update_cache: true
+
+  - name: Install docker 
+    apt: 
+      name: "{{ item }}"
+    loop:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+      
+  when: ansible_facts.os_family == 'Debian'
+
+
+- block: # RHEL based
+  - name: Delete old docker packages  
+    dnf:
+      name: "{{ item }}"
+      state: absent
+    loop: "{{ list_of_packages_to_delete.fedora if ansible_facts.distribution == 'Fedora' else  list_of_packages_to_delete.centos if ansible_facts.distribution == 'CentOS' else list_of_packages_to_delete.rhel }}"
+    when: "'docker-ce' not in ansible_facts.packages"
+    
+  - name: Install dnf-plugincs-core
+    dnf:
+      name: dnf-plugins-core
+      state: present
+    when: "ansible_facts.distribution != 'Fedora'"
+
+  - name: Add Docker CE repository for RHEL/CentOS
+    yum_repository:
+      name: docker-ce
+      description: Docker CE Repository
+      baseurl: "https://download.docker.com/linux/{{ 'centos' if ansible_facts.distribution == 'CentOS' else 'fedora' if ansible_facts.distribution == 'Fedora' else 'rhel'}}/$releasever/$basearch/stable"
+      gpgcheck: true
+      gpgkey: https://download.docker.com/linux/rhel/gpg
+      enabled: true
+  
+  - name: Install docker
+    dnf:
+      name: "{{ item }}"
+      state: present
+    loop:
+    - docker-ce 
+    - docker-ce-cli 
+    - containerd.io 
+    - docker-buildx-plugin 
+    - docker-compose-plugin
+
+  when: ansible_facts.os_family == "RedHat"
+
+- name: Start and enable docker
+  service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Ensure group "docker" exists
+  group:
+    name: docker
+    state: present
+
+- name: adding ubuntu to docker group
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes  

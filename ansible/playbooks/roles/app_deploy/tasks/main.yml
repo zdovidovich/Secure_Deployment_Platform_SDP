@@ -1,0 +1,37 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for app_deploy
+# copy image -> load image to docker -> deploy -> remove image tar archive 
+- block:
+  - name: Check parameters 
+    assert:
+      that: 
+        - app_image_name != ""
+        - app_image_path != ""
+        - app_container_name != ""
+      fail_msg: Not enough given parameters to start role 
+      success_msg: Parameters are good
+
+  - name: Copy image archive to host
+    copy:
+      src: "{{ app_image_path }}"
+      dest: "/tmp/{{ app_container_name }}__{{ now(utc=true,fmt='%Y-%m-%d__%H:%M:%S') }}"
+    register: result_copying
+      
+  - name: Load image archive to docker
+    community.docker.docker_image_load:
+      path: "{{ result_copying.dest }}"
+
+  - name: Start container
+    docker_container:
+      name: "{{ app_container_name }}"
+      image: "{{ app_image_name }}" 
+      ports: "{{ app_ports }}"
+      env: "{{ app_envs }}"
+      volumes: "{{ app_volumes }}"
+
+  always:
+  - name: Delete image tar archive
+    file: 
+      path: "{{ result_copying.dest }}"
+      state: absent

@@ -1,0 +1,50 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for docker_install
+list_of_packages_to_delete:
+  debian:
+    - docker.io 
+    - docker-compose 
+    - docker-doc 
+    - podman-docker 
+    - containerd 
+    - runc
+  ubuntu: 
+    - docker.io 
+    - docker-compose 
+    - docker-compose-v2 
+    - docker-doc 
+    - podman-docker 
+    - containerd 
+    - runc
+  rhel:
+    - docker
+    - docker-client
+    - docker-client-latest
+    - docker-common
+    - docker-latest
+    - docker-latest-logrotate
+    - docker-logrotate 
+    - docker-engine 
+    - podman
+    - runc
+  fedora:
+    - docker 
+    - docker-client 
+    - docker-client-latest 
+    - docker-common 
+    - docker-latest 
+    - docker-latest-logrotate 
+    - docker-logrotate 
+    - docker-selinux 
+    - docker-engine-selinux 
+    - docker-engine
+  centos:
+    - docker 
+    - docker-client 
+    - docker-client-latest 
+    - docker-common 
+    - docker-latest 
+    - docker-latest-logrotate 
+    - docker-logrotate 
+    - docker-engine

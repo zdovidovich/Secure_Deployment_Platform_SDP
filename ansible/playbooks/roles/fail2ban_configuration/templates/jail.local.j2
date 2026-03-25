@@ -1,0 +1,21 @@
+[DEFAULT]
+bantime = 15m
+findtime = 30m
+ignoreip = 127.0.0.1/8, ::1
+
+[sshd]
+enabled = true
+port    = {{ ssh_port }}
+filter = sshd
+logpath = {{ log_ssh_path }}
+maxretry = 3
+action = %(action_)s
+
+[recidive]
+enabled  = true
+filter = recidive
+action = %(action_)s
+logpath  = /var/log/fail2ban.log
+maxretry = 3
+bantime  = 1w
+findtime = 1d

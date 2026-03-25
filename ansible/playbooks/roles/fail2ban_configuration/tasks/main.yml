@@ -1,0 +1,55 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for fail2ban_configuration
+
+- name: Validate port
+  assert:
+    that: 
+    - ssh_port >= 0
+    - ssh_port <= 65535
+    fail_msg: "SSH port is not valid"
+
+- name: Install fail2ban (Debian-based systems)
+  apt:
+    name: fail2ban
+    state: present
+  when: ansible_facts.os_family == "Debian"
+
+- name: Install fail2ban (RHEL-based systems)
+  dnf:
+    name: fail2ban
+    state: present
+  when: ansible_facts.os_family == "RedHat"
+
+- name: Generate and copy jail.local
+  template: 
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    mode: 0644
+    owner: root
+    group: root
+  notify: Restart fail2ban
+
+- name: Create log file for ssh
+  copy:
+    content: ''
+    dest: "{{ log_ssh_path }}"
+    mode: 0644
+    owner: root
+    group: root
+    force: no
+
+- name: Create log file for fail2ban
+  copy:
+    content: ''
+    dest: /var/log/fail2ban.log
+    mode: 0644
+    owner: root
+    group: root
+    force: no
+
+- name: Enable fail2ban
+  service:
+    name: fail2ban
+    state: started
+    enabled: true 
