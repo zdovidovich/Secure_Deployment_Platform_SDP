@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDP - Secure Deployment Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .form-container {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="password"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="password"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: monospace;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 12px;
+            background: white;
+            border: 2px dashed #667eea;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-input-label:hover {
+            background: #f0f4ff;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .deploy-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .deploy-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .deploy-btn:active {
+            transform: translateY(0);
+        }
+
+        .hint {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 SDP</h1>
+            <p>Secure Deployment Platform - DevSecOps автоматизация</p>
+        </header>
+
+        <div class="form-container">
+            <form action="/deploy" method="POST" enctype="multipart/form-data">
+                
+                <!-- Секция: Сервер -->
+                <div class="section">
+                    <h2>🖥️ Целевой сервер</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="server_ip">IP адрес *</label>
+                            <input type="text" id="server_ip" name="server_ip" 
+                                   placeholder="192.168.1.100" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="server_port">SSH порт</label>
+                            <input type="number" id="server_port" name="server_port" 
+                                   value="22" min="1" max="65535">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="server_user">Пользователь *</label>
+                            <input type="text" id="server_user" name="server_user" 
+                                   placeholder="ubuntu" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ssh_key">SSH ключ *</label>
+                            <div class="file-input-wrapper">
+                                <input type="file" id="ssh_key" name="ssh_key" 
+                                       accept=".pem,.key" required>
+                                <label for="ssh_key" class="file-input-label">
+                                    📁 Выберите файл ключа
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Секция: Безопасность -->
+                <div class="section">
+                    <h2>🔒 Настройки безопасности</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ssh_port">Новый SSH порт</label>
+                            <input type="number" id="ssh_port" name="ssh_port" 
+                                   value="2222" min="1" max="65535">
+                            <div class="hint">Оставьте 22, чтобы не менять</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Опции</label>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="enable_fail2ban" 
+                                       name="enable_fail2ban" checked>
+                                <label for="enable_fail2ban">Включить Fail2Ban</label>
+                            </div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="enable_selinux" 
+                                       name="enable_selinux" checked>
+                                <label for="enable_selinux">SELinux (RHEL)</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Секция: Docker образ -->
+                <div class="section">
+                    <h2>🐳 Docker образ</h2>
+                    <div class="form-group">
+                        <label for="docker_image">Файл образа (tar) *</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="docker_image" name="docker_image" 
+                                   accept=".tar" required>
+                            <label for="docker_image" class="file-input-label">
+                                📦 Выберите Docker image tar архив
+                            </label>
+                        </div>
+                        <div class="hint">Создайте через: docker save -o image.tar image_name</div>
+                    </div>
+                </div>
+
+                <!-- Секция: Контейнер -->
+                <div class="section">
+                    <h2>📦 Настройки контейнера</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="container_name">Имя контейнера *</label>
+                            <input type="text" id="container_name" name="container_name" 
+                                   placeholder="myapp" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="image_name">Имя образа *</label>
+                            <input type="text" id="image_name" name="image_name" 
+                                   placeholder="myapp:latest" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="host_port">Порт на хосте *</label>
+                            <input type="number" id="host_port" name="host_port" 
+                                   value="8080" min="1" max="65535" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="container_port">Порт в контейнере *</label>
+                            <input type="number" id="container_port" name="container_port" 
+                                   value="80" min="1" max="65535" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="volumes">Volumes (опционально)</label>
+                        <textarea id="volumes" name="volumes" 
+                                  placeholder="/host/path:/container/path&#10;/data:/app/data"></textarea>
+                        <div class="hint">Каждый volume с новой строки</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="env_vars">Переменные окружения (опционально)</label>
+                        <textarea id="env_vars" name="env_vars" 
+                                  placeholder="KEY=value&#10;DATABASE_URL=postgres://..."></textarea>
+                        <div class="hint">Каждая переменная с новой строки</div>
+                    </div>
+                </div>
+
+                <button type="submit" class="deploy-btn">
+                    🚀 Развернуть приложение
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Простой скрипт для отображения имени выбранного файла
+        document.querySelectorAll('input[type="file"]').forEach(input => {
+            input.addEventListener('change', function() {
+                const fileName = this.files[0] ? this.files[0].name : 'Выберите файл';
+                const label = this.nextElementSibling;
+                if (label && label.classList.contains('file-input-label')) {
+                    label.textContent = '📁 ' + fileName;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
