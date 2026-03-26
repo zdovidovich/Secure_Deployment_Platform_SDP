@@ -4,6 +4,9 @@ import uuid
 from werkzeug.utils import secure_filename
 import glob
 
+def get_base_dir():
+    return os.path.dirname(os.path.abspath(__file__))
+
 def save_temp_file(file_obj, prefix='upload_'):
     """
     Сохраняет загруженный файл во временную папку с уникальным именем.
@@ -31,7 +34,7 @@ def create_inventory_temp_file(ansible_params: dict, ssh_key_path) -> str:
     name = uuid.uuid4().hex[:8]  
     unique_name = f"inventory_{name}"
     
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = get_base_dir()
     inventory_dir = os.path.join(base_dir, '..', '..',  'ansible', 'inventory')
     
     os.makedirs(inventory_dir, exist_ok=True)
@@ -47,7 +50,7 @@ def create_inventory_temp_file(ansible_params: dict, ssh_key_path) -> str:
             f"ansible_user={ansible_params['ansible_user']} "
             f"ansible_ssh_private_key_file={ssh_key_path} "
         )
-    
+
     os.chmod(file_path, 0o600)
     
     return file_path
