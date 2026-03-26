@@ -26,10 +26,5 @@ def deploy():
     return "Nothing yet"
 
 
-проверка загруженных параметров (docker image + priv_key, мб еще проверить остальные параметры (хотя некоторые уже проверяются в ansible))
-сделать inventory файл, добавить сам хост (имя - хэш(айпи:пользователь:время создания, ansible_host, ansible_user, ansible_private_key_file, ansible_port), загрузить priv_key для ssh)
-указать дополнительные переменные (ssh_port, app_image_path, app_image_name, app_container_name, app_ports, app_volumes?, app_envs?)
-начать запускать роли в правильном порядке
-в прямом эфире показывать вывод терминала?
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=8080)
