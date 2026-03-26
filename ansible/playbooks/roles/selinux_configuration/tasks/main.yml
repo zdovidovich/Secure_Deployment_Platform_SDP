@@ -20,7 +20,7 @@
       msg: SELinux was disabled. The configure was saved, but ports politics weren't applied. Reboot your server and run this configuration again, to apply politics.
     when: ansible_facts.selinux.status == "disabled" and selinux_state != "disabled"
 
-  - name: Set SELinux mode to enforcing
+  - name: Set SELinux mode
     selinux:
       state: "{{ selinux_state }}"
       policy: targeted
