@@ -2,22 +2,23 @@
 ---
 # tasks file for app_deploy
 - block:
-
-  - name: Install pip (RHEL-based systems)
+  - name: Install pip and necessary libraries (RHEL-based systems)
     yum: 
-      name: python3-pip
+      name: "{{ item }}"
       state: present
+    loop:
+      - python3-pip
+      - python3-requests
     when: ansible_facts.os_family == "RedHat"
 
-  - name: Install pip (Debian-based systems)
+  - name: Install pip and necessary libraries (Debian-based systems)
     apt: 
-      name: python3-pip
+      name: "{{ item }}"
       state: present
+    loop:
+      - python3-pip
+      - python3-requests
     when: ansible_facts.os_family == "Debian"
-
-  - name: Install necessary libraries
-    pip:
-      name: requests 
 
   - name: Check parameters 
     assert:

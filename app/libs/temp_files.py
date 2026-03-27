@@ -34,8 +34,7 @@ def create_inventory_temp_file(ansible_params: dict, ssh_key_path) -> str:
     name = uuid.uuid4().hex[:8]  
     unique_name = f"inventory_{name}"
     
-    base_dir = get_base_dir()
-    inventory_dir = os.path.join(base_dir, '..', '..',  'ansible', 'inventory')
+    inventory_dir = os.path.join(get_base_dir(), '..', '..',  'ansible', 'inventory')
     
     os.makedirs(inventory_dir, exist_ok=True)
     
@@ -55,7 +54,7 @@ def create_inventory_temp_file(ansible_params: dict, ssh_key_path) -> str:
     
     return file_path
 
-def cleanup_temp_files(prefixes=('ssh_key_', 'docker_image_')):
+def cleanup_temp_files(prefixes=('ssh_key_', 'docker_image_', 'inventory_')):
     temp_dir = tempfile.gettempdir()
     for prefix in prefixes:
         for file_path in glob.glob(os.path.join(temp_dir, f'{prefix}*')):
@@ -63,4 +62,10 @@ def cleanup_temp_files(prefixes=('ssh_key_', 'docker_image_')):
                 os.remove(file_path)
             except OSError:
                 pass  
+    for file_path in glob.glob(os.path.join(os.path.join(get_base_dir(), '..', '..',  'ansible', 'inventory'), f'{prefix}*')):
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass  
+    
     

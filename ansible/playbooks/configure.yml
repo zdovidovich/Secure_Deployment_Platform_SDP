@@ -3,38 +3,23 @@
   hosts: all
   become: true
 
-  vars:
-    port_for_ssh: 8081
-
   tasks:
-  # - name: Update repos
-  #   include_role: 
-  #     name: update_repos
+  - name: Update repos
+    include_role: 
+      name: update_repos
     
-  # - name: Configure ssh
-  #   include_role: 
-  #     name: ssh_hardening
-  #   vars:
-  #     ssh_port: "{{ port_for_ssh }}"
+  - name: Configure ssh
+    include_role: 
+      name: ssh_hardening
   
-  # - name: Configure fail2ban
-  #   include_role:
-  #     name: fail2ban_configuration
-  #   vars:
-  #     ssh_port: "{{ port_for_ssh }}"
+  - name: Configure fail2ban
+    include_role:
+      name: fail2ban_configuration
 
-  # - name: Install docker
-  #   include_role:
-  #     name: docker_install
+  - name: Install docker
+    include_role:
+      name: docker_install
 
   - name: Deploy app
     include_role:
       name: app_deploy
-    vars:
-      app_image_path: /home/F0ra1n/nginx.image
-      app_image_name: nginx:latest
-      app_container_name: nginx
-      app_ports: 
-      - "8082:80"
-      app_volumes:
-      - "/home/F0ra1n/htmls:/usr/share/nginx/html"

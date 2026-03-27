@@ -1,0 +1,2 @@
+[server]
+9b8a3626 ansible_host=192.168.100.1 ansible_port=22 ansible_user=sysadmin ansible_ssh_private_key_file=/tmp/ssh_key_a5b2f053a32740cfbedd1ef52b3f281a_id_ed25519 
