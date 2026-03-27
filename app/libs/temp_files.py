@@ -3,6 +3,8 @@ import tempfile
 import uuid
 from werkzeug.utils import secure_filename
 import glob
+from utils import get_project_root
+
 
 def get_base_dir():
     return os.path.dirname(os.path.abspath(__file__))
@@ -34,7 +36,7 @@ def create_inventory_temp_file(ansible_params: dict, ssh_key_path) -> str:
     name = uuid.uuid4().hex[:8]  
     unique_name = f"inventory_{name}"
     
-    inventory_dir = os.path.join(get_base_dir(), '..', '..',  'ansible', 'inventory')
+    inventory_dir = os.path.join(get_project_root(), 'ansible', 'inventory')
     
     os.makedirs(inventory_dir, exist_ok=True)
     
@@ -62,7 +64,7 @@ def cleanup_temp_files(prefixes=('ssh_key_', 'docker_image_', 'inventory_')):
                 os.remove(file_path)
             except OSError:
                 pass  
-    for file_path in glob.glob(os.path.join(os.path.join(get_base_dir(), '..', '..',  'ansible', 'inventory'), f'{prefix}*')):
+    for file_path in glob.glob(os.path.join(os.path.join(get_project_root(),  'ansible', 'inventory'), f'inventory_*')):
         try:
             os.remove(file_path)
         except OSError:

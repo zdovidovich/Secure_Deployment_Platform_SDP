@@ -87,25 +87,58 @@ DEPLOY_FORM_RULES: Dict[str, ValidationRule] = {
     ),
 }
 
-def validate_all_data(form_data: dict, file_path_image, file_path_private_ssh_key):
-    result = validate_form_data(form_data)
-    result_tar = validate_tar_archive(file_path_image)
-    if not result_tar:
-        result = (False, result[-1].append("Bad docker image"))
-    result_ssh_key = validate_ssh_private_key(file_path_private_ssh_key)
-    if not result_ssh_key:
-        result = (False, result[-1].append("Bad private key ssh"))
-    return result
+def validate_all_data(form_data: dict, file_path_image, file_path_private_ssh_key) -> Tuple[bool, List[str], dict]:
+    """
+    Полная валидация всех данных.
+    Возвращает (success, errors, validated_data)
+    """
+    if not file_path_image or not file_path_private_ssh_key:
+        return False, ["Не загружены файлы (образ или ключ)"], {}
+    is_valid, errors, validated_data = validate_form_data(form_data)
+    
+    if not validate_tar_archive(file_path_image):
+        is_valid = False
+        errors.append("docker_image: Неверный формат Docker образа (не TAR)")
+    
+    if not validate_ssh_private_key(file_path_private_ssh_key):
+        is_valid = False
+        errors.append("ssh_key: Неверный формат приватного SSH-ключа")
+    
+    return is_valid, errors, validated_data
 
-def validate_form_data(form_data: dict) -> Tuple[bool, List[str]]:
+def validate_multiline_field(value: str, line_pattern: re.Pattern, field_name: str, required: bool = False) -> List[str]:
+    """
+    Валидирует мульти-строчное поле (каждая строка проверяется отдельно).
+    Возвращает список ошибок (пустой, если всё ок).
+    """
+    errors = []
+    
+    if not value or value.strip() == '':
+        if required:
+            errors.append(f"{field_name}: Поле обязательно для заполнения")
+        return errors
+    
+    lines = [line.strip() for line in value.splitlines() if line.strip()]
+    
+    for i, line in enumerate(lines, 1):
+        if not line_pattern.match(line):
+            errors.append(f"{field_name} (строка {i}): Неверный формат '{line}'")
+    
+    return errors
+
+
+def validate_form_data(form_data: dict) -> Tuple[bool, List[str], dict]:
     """
     Валидирует данные формы по правилам.
-    Возвращает (success, errors_list)
+    Возвращает (success, errors_list, validated_data)
     """
     errors = []
     validated_data = {}
     
     for field_name, rule in DEPLOY_FORM_RULES.items():
+        if field_name in ['app_volumes', 'app_envs']:
+            continue
+            
         value_str = form_data.get(field_name, '')
         
         is_valid, processed_value = rule.validate(value_str)
@@ -115,13 +148,54 @@ def validate_form_data(form_data: dict) -> Tuple[bool, List[str]]:
         elif processed_value is not None:
             validated_data[field_name] = processed_value
     
-    if 'app_host_port' in validated_data and 'app_container_port' in validated_data:
-        if not (0 < validated_data['app_host_port'] <= 65535):
-            errors.append('app_host_port: Должен быть в диапазоне 1-65535')
-        if not (0 < validated_data['app_container_port'] <= 65535):
-            errors.append('app_container_port: Должен быть в диапазоне 1-65535')
+    volumes_pattern = re.compile(r'^[^:]+:[^:]+$')
+    volumes_errors = validate_multiline_field(
+        value=form_data.get('app_volumes', ''),
+        line_pattern=volumes_pattern,
+        field_name='app_volumes',
+        required=False
+    )
+    errors.extend(volumes_errors)
     
-    return len(errors) == 0, errors
+    if not volumes_errors and form_data.get('app_volumes', '').strip():
+        validated_data['app_volumes'] = [
+            line.strip() for line in form_data.get('app_volumes', '').splitlines() 
+            if line.strip()
+        ]
+    else:
+        validated_data['app_volumes'] = []
+    
+    env_pattern = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*=.*$')
+    env_errors = validate_multiline_field(
+        value=form_data.get('app_envs', ''),
+        line_pattern=env_pattern,
+        field_name='app_envs',
+        required=False
+    )
+    errors.extend(env_errors)
+    
+    if not env_errors and form_data.get('app_envs', '').strip():
+        validated_data['app_envs'] = {}
+        for line in form_data.get('app_envs', '').splitlines():
+            line = line.strip()
+            if line and '=' in line:
+                key, value = line.split('=', 1)
+                validated_data['app_envs'][key.strip()] = value.strip()
+    else:
+        validated_data['app_envs'] = {}
+
+    for port_field in ['ansible_port', 'ssh_port', 'app_host_port', 'app_container_port']:
+        if port_field in validated_data:
+            port = validated_data[port_field]
+            if not (0 < port <= 65535):
+                errors.append(f"{port_field}: Должен быть в диапазоне 1-65535")
+    
+    if 'ansible_host' in validated_data:
+        octets = validated_data['ansible_host'].split('.')
+        if not all(0 <= int(o) <= 255 for o in octets):
+            errors.append('ansible_host: Каждый октет должен быть в диапазоне 0-255')
+    
+    return len(errors) == 0, errors, validated_data
 
 
 def validate_tar_archive(file_path_image):

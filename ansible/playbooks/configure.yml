@@ -15,7 +15,8 @@
   - name: Configure fail2ban
     include_role:
       name: fail2ban_configuration
-
+    when: fail2ban_state == True
+    
   - name: Install docker
     include_role:
       name: docker_install

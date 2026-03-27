@@ -2,12 +2,14 @@ import ansible_runner
 import json
 from libs.temp_files import get_base_dir
 import os
+from utils import get_project_root
+
 
 PLAYBOOKS_DIR="playbooks"
 ROLES_DIR="roles"
 
 def get_base_dir_ansible():
-    return os.path.join(get_base_dir(), '..', '..', 'ansible')
+    return os.path.join(get_project_root(), 'ansible')
 
 def run_check(file_path_inventory):
     result = ansible_runner.run(
