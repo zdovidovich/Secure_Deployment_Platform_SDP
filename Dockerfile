@@ -2,18 +2,25 @@ FROM python:3.13.12-alpine
 
 WORKDIR /SDP
 
-COPY . /SDP/
+COPY ./app/requirements.txt /SDP/app/requirements.txt
+RUN pip install --no-cache-dir -r /SDP/app/requirements.txt
 
-RUN pip install -r ./app/requirements.txt
 RUN apk update && apk upgrade
-RUN apk add ansible
-RUN ansible-galaxy collection install community.docker
+RUN apk add --no-cache ansible
+RUN ansible-galaxy collection install --no-cache community.docker
 
-RUN wget https://github.com/aquasecurity/trivy/releases/download/v0.69.3/trivy_0.69.3_Linux-64bit.tar.gz -O /tmp/trivy.tar.gz && tar -xzf /tmp/trivy.tar.gz && chmod +x /tmp/trivy
+RUN wget -q https://github.com/aquasecurity/trivy/releases/download/v0.69.3/trivy_0.69.3_Linux-64bit.tar.gz -O /tmp/trivy.tar.gz && \
+    tar -xzf /tmp/trivy.tar.gz -C /tmp && \
+    mv /tmp/trivy /usr/local/bin/trivy && \
+    chmod +x /usr/local/bin/trivy && \
+    rm /tmp/trivy.tar.gz
 
-RUN wget https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-linux-x86_64 -O /tmp/hadolint && chmod +x /tmp/hadolint
 
+RUN wget -q https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-linux-x86_64 -O /tmp/hadolint && \
+    mv /tmp/hadolint /usr/local/bin/hadolint && \
+    chmod +x /usr/local/bin/hadolint
 
+COPY . /SDP/
 
 EXPOSE 8080
 
