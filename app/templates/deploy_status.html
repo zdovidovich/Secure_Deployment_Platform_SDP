@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDP — Статус развёртывания</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Libre+Franklin:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/deploy_status.css') }}">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="{{ url_for('deploy.index') }}" class="logo">SDP<span>Platform</span></a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <header class="page-header">
+            <h1>Статус <span class="gold">развёртывания</span></h1>
+            <p class="session-id">Сессия: {{ session_id }}</p>
+        </header>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-info">
+                <div class="status-indicator {{ status }}" id="statusIndicator"></div>
+                <span class="status-text {{ status }}" id="statusText">
+                    {% if status == 'pending' %}Ожидание...
+                    {% elif status == 'running' %}Выполняется
+                    {% elif status == 'success' %}Успешно завершено
+                    {% elif status == 'error' %}Ошибка
+                    {% endif %}
+                </span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <!-- Console -->
+        <div class="console-card">
+            <div class="console-header">
+                <h2 class="console-title">
+                    <span>📜</span> Консоль выполнения
+                </h2>
+                <div class="console-actions">
+                    <button class="btn-small" onclick="scrollToBottom()">⬇️ Вниз</button>
+                    <button class="btn-small" onclick="clearConsole()">🗑️ Очистить</button>
+                    <button class="btn-small" onclick="copyConsole()">📋 Копировать</button>
+                </div>
+            </div>
+            <div class="console-output" id="consoleOutput">
+                <div class="log-entry info">
+                    <span class="log-timestamp">--:--:--</span>
+                    <span class="log-source deployment">DEPLOY</span>
+                    <span class="log-message">Подключение к потоку событий...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Final Report -->
+        <div class="report-card" id="reportCard">
+            <div class="report-header">
+                <div class="report-icon" id="reportIcon">✅</div>
+                <h2 class="report-title" id="reportTitle">Развёртывание завершено</h2>
+                <p class="report-subtitle" id="reportSubtitle">Все задачи выполнены успешно</p>
+            </div>
+            
+            <div class="report-grid" id="reportStats">
+                <!-- Статистика будет добавлена через JS -->
+            </div>
+
+            <div class="report-actions">
+                <a href="{{ url_for('deploy.index') }}" class="btn-primary">← На главную</a>
+                <button class="btn-outline" onclick="downloadReport()">📥 Скачать отчёт</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection Status -->
+    <div class="connection-status" id="connectionStatus">
+        <div class="connection-dot connected" id="connectionDot"></div>
+        <span id="connectionText">Подключено</span>
+    </div>
+
+    <script>
+        const sessionId = "{{ session_id }}";
+        const streamUrl = `/deploy/stream/${sessionId}`;
+        const statusUrl = `/deploy/api/status/${sessionId}`;
+        
+        let eventSource = null;
+        let consoleBuffer = [];
+        let isFinished = false;
+        let logIndex = 0;
+
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', () => {
+            connectSSE();
+            updateProgress();
+        });
+
+        // Подключение к SSE
+        function connectSSE() {
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            eventSource = new EventSource(streamUrl);
+            updateConnectionStatus(true);
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'finished') {
+                        isFinished = true;
+                        updateStatus(data.status);
+                        showFinalReport();
+                        eventSource.close();
+                        updateConnectionStatus(false);
+                        return;
+                    }
+
+                    addLogEntry(data);
+                    updateProgress();
+                } catch (e) {
+                    console.error('Ошибка парсинга SSE:', e);
+                }
+            };
+
+            eventSource.onerror = () => {
+                updateConnectionStatus(false);
+                addLogEntry({
+                    level: 'error',
+                    message: 'Потеряно соединение с сервером. Попытка переподключения...',
+                    source: 'deployment'
+                });
+
+                // Попытка переподключения через 3 секунды
+                setTimeout(() => {
+                    if (!isFinished) {
+                        connectSSE();
+                    }
+                }, 3000);
+            };
+        }
+
+        // Добавление записи в консоль
+        function addLogEntry(entry) {
+            const consoleOutput = document.getElementById('consoleOutput');
+            const timestamp = new Date(entry.timestamp).toLocaleTimeString('ru-RU');
+            
+            const logDiv = document.createElement('div');
+            logDiv.className = `log-entry ${entry.level}`;
+            logDiv.innerHTML = `
+                <span class="log-timestamp">${timestamp}</span>
+                <span class="log-source ${entry.source}">${entry.source}</span>
+                <span class="log-message">${escapeHtml(entry.message)}</span>
+                ${entry.details && entry.details.report ? `<div class="log-details">${escapeHtml(entry.details.report)}</div>` : ''}
+            `;
+
+            consoleOutput.appendChild(logDiv);
+            consoleBuffer.push(entry);
+            logIndex++;
+
+            // Автопрокрутка вниз
+            if (consoleOutput.scrollHeight - consoleOutput.scrollTop - consoleOutput.clientHeight < 100) {
+                scrollToBottom();
+            }
+        }
+
+        // Обновление статуса
+        function updateStatus(status) {
+            const indicator = document.getElementById('statusIndicator');
+            const text = document.getElementById('statusText');
+            
+            indicator.className = `status-indicator ${status}`;
+            text.className = `status-text ${status}`;
+            
+            const statusMessages = {
+                'pending': 'Ожидание...',
+                'running': 'Выполняется',
+                'success': 'Успешно завершено',
+                'error': 'Ошибка выполнения'
+            };
+            
+            text.textContent = statusMessages[status] || status;
+        }
+
+        // Обновление прогресс-бара
+        function updateProgress() {
+            const progressFill = document.getElementById('progressFill');
+            const stages = ['pending', 'running', 'success', 'error'];
+            const currentStage = document.getElementById('statusIndicator').className.replace('status-indicator ', '');
+            const progress = stages.indexOf(currentStage) * 33;
+            progressFill.style.width = `${Math.min(progress, 100)}%`;
+        }
+
+        // Показать финальный отчёт
+        function showFinalReport() {
+            const reportCard = document.getElementById('reportCard');
+            const reportIcon = document.getElementById('reportIcon');
+            const reportTitle = document.getElementById('reportTitle');
+            const reportSubtitle = document.getElementById('reportSubtitle');
+            const reportStats = document.getElementById('reportStats');
+
+            const currentStatus = document.getElementById('statusIndicator').className.replace('status-indicator ', '');
+            
+            if (currentStatus === 'success') {
+                reportIcon.textContent = '✅';
+                reportTitle.textContent = 'Развёртывание завершено';
+                reportSubtitle.textContent = 'Все задачи выполнены успешно';
+                reportStats.innerHTML = `
+                    <div class="report-stat">
+                        <div class="report-stat-value">✓</div>
+                        <div class="report-stat-label">Статус</div>
+                    </div>
+                    <div class="report-stat">
+                        <div class="report-stat-value">${logIndex}</div>
+                        <div class="report-stat-label">Событий</div>
+                    </div>
+                    <div class="report-stat">
+                        <div class="report-stat-value">${new Date().toLocaleTimeString('ru-RU')}</div>
+                        <div class="report-stat-label">Время завершения</div>
+                    </div>
+                `;
+            } else {
+                reportIcon.textContent = '❌';
+                reportTitle.textContent = 'Развёртывание не удалось';
+                reportSubtitle.textContent = 'Произошла ошибка во время выполнения';
+                reportStats.innerHTML = `
+                    <div class="report-stat">
+                        <div class="report-stat-value">✗</div>
+                        <div class="report-stat-label">Статус</div>
+                    </div>
+                    <div class="report-stat">
+                        <div class="report-stat-value">${logIndex}</div>
+                        <div class="report-stat-label">Событий</div>
+                    </div>
+                `;
+            }
+
+            reportCard.classList.add('visible');
+            scrollToBottom();
+        }
+
+        // Утилиты
+        function scrollToBottom() {
+            const consoleOutput = document.getElementById('consoleOutput');
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        function clearConsole() {
+            const consoleOutput = document.getElementById('consoleOutput');
+            consoleOutput.innerHTML = '';
+            consoleBuffer = [];
+            logIndex = 0;
+            addLogEntry({
+                level: 'info',
+                message: 'Консоль очищена',
+                source: 'deployment'
+            });
+        }
+
+        function copyConsole() {
+            const text = consoleBuffer.map(e => `[${e.timestamp}] ${e.source}: ${e.message}`).join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                addLogEntry({ level: 'success', message: 'Консоль скопирована в буфер', source: 'deployment' });
+            });
+        }
+
+        function downloadReport() {
+            const text = consoleBuffer.map(e => `[${e.timestamp}] ${e.source}: ${e.message}`).join('\n');
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sdp-deploy-${sessionId}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function updateConnectionStatus(connected) {
+            const dot = document.getElementById('connectionDot');
+            const text = document.getElementById('connectionText');
+            
+            if (connected) {
+                dot.className = 'connection-dot connected';
+                text.textContent = 'Подключено';
+            } else {
+                dot.className = 'connection-dot disconnected';
+                text.textContent = 'Отключено';
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        window.addEventListener('beforeunload', () => {
+            if (eventSource) {
+                eventSource.close();
+            }
+        });
+    </script>
+</body>
+</html>
