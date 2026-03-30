@@ -3,8 +3,8 @@ import tempfile
 import uuid
 from werkzeug.utils import secure_filename
 import glob
-from utils import get_project_root
-
+from libs.utils import get_project_root
+from libs.ansible import get_base_dir_ansible
 
 def get_base_dir():
     return os.path.dirname(os.path.abspath(__file__))
@@ -36,7 +36,7 @@ def create_inventory_temp_file(ansible_params: dict, ssh_key_path) -> str:
     name = uuid.uuid4().hex[:8]  
     unique_name = f"inventory_{name}"
     
-    inventory_dir = os.path.join(get_project_root(), 'ansible', 'inventory')
+    inventory_dir = os.path.join(get_base_dir_ansible(), 'inventory')
     
     os.makedirs(inventory_dir, exist_ok=True)
     
@@ -56,7 +56,7 @@ def create_inventory_temp_file(ansible_params: dict, ssh_key_path) -> str:
     
     return file_path
 
-def cleanup_temp_files(prefixes=('ssh_key_', 'docker_image_', 'inventory_')):
+def cleanup_temp_files(prefixes=('ssh_key_', 'docker_image_', 'dockerfile_', 'inventory_')):
     temp_dir = tempfile.gettempdir()
     for prefix in prefixes:
         for file_path in glob.glob(os.path.join(temp_dir, f'{prefix}*')):

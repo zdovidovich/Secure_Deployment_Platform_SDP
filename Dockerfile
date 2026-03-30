@@ -13,8 +13,8 @@ RUN wget -q https://github.com/aquasecurity/trivy/releases/download/v0.69.3/triv
     tar -xzf /tmp/trivy.tar.gz -C /tmp && \
     mv /tmp/trivy /usr/local/bin/trivy && \
     chmod +x /usr/local/bin/trivy && \
-    rm /tmp/trivy.tar.gz
-
+    rm /tmp/trivy.tar.gz && \
+    trivy image --download-db-only
 
 RUN wget -q https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-linux-x86_64 -O /tmp/hadolint && \
     mv /tmp/hadolint /usr/local/bin/hadolint && \

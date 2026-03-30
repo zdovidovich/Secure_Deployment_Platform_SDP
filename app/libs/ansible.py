@@ -1,15 +1,11 @@
 import ansible_runner
 import json
-from libs.temp_files import get_base_dir
 import os
-from utils import get_project_root
+from libs.utils import get_project_root
 
-
-PLAYBOOKS_DIR="playbooks"
-ROLES_DIR="roles"
 
 def get_base_dir_ansible():
-    return os.path.join(get_project_root(), 'ansible')
+    return os.path.join(get_project_root(), ".." ,'ansible')
 
 def run_check(file_path_inventory):
     result = ansible_runner.run(
@@ -29,7 +25,7 @@ def run_playbook(playbook, extravars: dict, file_path_inventory):
     result = ansible_runner.run(
     private_data_dir= get_base_dir_ansible(),
     inventory=file_path_inventory,
-    playbook=os.path.join(get_base_dir_ansible(), PLAYBOOKS_DIR, playbook),
+    playbook=os.path.join(get_base_dir_ansible(), playbook),
     host_pattern='all',
     extravars=extravars
 )

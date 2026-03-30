@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SDP — Secure Deployment Platform</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Libre+Franklin:wght@300;400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Libre+Franklin:wght@300;400;500&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="static/css/style.css">
 </head>
+
 <body>
     <nav class="nav">
         <div class="nav-inner">
@@ -29,26 +33,23 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="server_ip">IP адрес <span class="required">*</span></label>
-                            <input type="text" id="server_ip" name="ansible_host" 
-                                   placeholder="192.168.1.100" required pattern="^(\d{1,3}\.){3}\d{1,3}$">
+                            <input type="text" id="server_ip" name="ansible_host" placeholder="192.168.1.100" required
+                                pattern="^(\d{1,3}\.){3}\d{1,3}$">
                         </div>
                         <div class="form-group">
                             <label for="server_port">SSH порт</label>
-                            <input type="number" id="server_port" name="ansible_port" 
-                                   value="22" min="1" max="65535">
+                            <input type="number" id="server_port" name="ansible_port" value="22" min="1" max="65535">
                         </div>
                     </div>
                     <div class="form-grid" style="margin-top: 1rem;">
                         <div class="form-group">
                             <label for="server_user">Пользователь <span class="required">*</span></label>
-                            <input type="text" id="server_user" name="ansible_user" 
-                                   placeholder="ubuntu" required>
+                            <input type="text" id="server_user" name="ansible_user" placeholder="ubuntu" required>
                         </div>
                         <div class="form-group">
                             <label for="ssh_key">SSH ключ <span class="required">*</span></label>
                             <label class="file-upload" for="ssh_key">
-                                <input type="file" id="ssh_key" name="ssh_key" 
-                                       accept=".pem,.key" required>
+                                <input type="file" id="ssh_key" name="ssh_key" required>
                                 <span class="file-upload-label">
                                     <span>Выберите файл ключа</span>
                                 </span>
@@ -63,21 +64,19 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="ssh_port">Новый порт SSH</label>
-                            <input type="number" id="ssh_port" name="ssh_port" 
-                                   value="2222" min="1" max="65535">
-                            <div class="hint">Оставьте текущий порт sshd (вероятно, <code>22</code>), чтобы не менять</div>
+                            <input type="number" id="ssh_port" name="ssh_port" value="2222" min="1" max="65535">
+                            <div class="hint">Оставьте текущий порт sshd (вероятно, <code>22</code>), чтобы не менять
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Опции</label>
                             <div class="checkbox-group">
                                 <div class="checkbox-item">
-                                    <input type="checkbox" id="enable_fail2ban" 
-                                           name="enable_fail2ban" checked>
+                                    <input type="checkbox" id="enable_fail2ban" name="enable_fail2ban" checked>
                                     <label for="enable_fail2ban">Fail2Ban</label>
                                 </div>
                                 <div class="checkbox-item">
-                                    <input type="checkbox" id="enable_selinux" 
-                                           name="enable_selinux" checked>
+                                    <input type="checkbox" id="enable_selinux" name="enable_selinux" checked>
                                     <label for="enable_selinux">SELinux (RHEL)</label>
                                 </div>
                             </div>
@@ -90,14 +89,27 @@
                     <div class="form-group full-width">
                         <label for="docker_image">Файл образа (.tar) <span class="required">*</span></label>
                         <label class="file-upload" for="docker_image">
-                            <input type="file" id="docker_image" name="docker_image" 
-                                   accept=".tar" required>
+                            <input type="file" id="docker_image" name="docker_image" accept=".tar" required>
                             <span class="file-upload-label">
                                 <span>Выберите Docker image tar</span>
                             </span>
                         </label>
                         <div class="file-name" id="docker_image_name"></div>
                         <div class="hint">Создайте через: <code>docker save -o image.tar name:tag</code></div>
+                    </div>
+
+                    <div class="form-group full-width"
+                        style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                        <label for="dockerfile">Dockerfile (опционально)</label>
+                        <label class="file-upload" for="dockerfile">
+                            <input type="file" id="dockerfile" name="dockerfile"
+                                accept="Dockerfile,Dockerfile.*,*.dockerfile">
+                            <span class="file-upload-label">
+                                <span>Выберите Dockerfile для проверки (Hadolint)</span>
+                            </span>
+                        </label>
+                        <div class="file-name" id="dockerfile_name"></div>
+                        <div class="hint">Если предоставлен — будет выполнен статический анализ через Hadolint</div>
                     </div>
                 </div>
 
@@ -106,37 +118,37 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="container_name">Имя контейнера <span class="required">*</span></label>
-                            <input type="text" id="container_name" name="app_container_name" 
-                                   placeholder="myapp" required pattern="^[a-zA-Z0-9][a-zA-Z0-9_.-]*$">
+                            <input type="text" id="container_name" name="app_container_name" placeholder="myapp"
+                                required pattern="^[a-zA-Z0-9][a-zA-Z0-9_.-]*$">
                         </div>
                         <div class="form-group">
                             <label for="image_name">Имя образа <span class="required">*</span></label>
-                            <input type="text" id="image_name" name="app_image_name" 
-                                   placeholder="myapp:latest" required>
+                            <input type="text" id="image_name" name="app_image_name" placeholder="myapp:latest"
+                                required>
                         </div>
                     </div>
                     <div class="form-grid" style="margin-top: 1rem;">
                         <div class="form-group">
                             <label for="host_port">Порт хоста <span class="required">*</span></label>
-                            <input type="number" id="host_port" name="app_host_port" 
-                                   value="8080" min="1" max="65535" required>
+                            <input type="number" id="host_port" name="app_host_port" value="8080" min="1" max="65535"
+                                required>
                         </div>
                         <div class="form-group">
                             <label for="container_port">Порт контейнера <span class="required">*</span></label>
-                            <input type="number" id="container_port" name="app_container_port" 
-                                   value="80" min="1" max="65535" required>
+                            <input type="number" id="container_port" name="app_container_port" value="80" min="1"
+                                max="65535" required>
                         </div>
                     </div>
                     <div class="form-group full-width" style="margin-top: 1rem;">
                         <label for="volumes">Volumes (опционально)</label>
-                        <textarea id="volumes" name="app_volumes" 
-                                  placeholder="/host/path:/container/path&#10;/data:/app/data"></textarea>
+                        <textarea id="volumes" name="app_volumes"
+                            placeholder="/host/path:/container/path&#10;/data:/app/data"></textarea>
                         <div class="hint">Формат: <code>хост:контейнер</code>, каждый с новой строки</div>
                     </div>
                     <div class="form-group full-width">
                         <label for="env_vars">ENV переменные (опционально)</label>
-                        <textarea id="env_vars" name="app_envs" 
-                                  placeholder="KEY=value&#10;DATABASE_URL=postgres://..."></textarea>
+                        <textarea id="env_vars" name="app_envs"
+                            placeholder="KEY=value&#10;DATABASE_URL=postgres://..."></textarea>
                         <div class="hint">Формат: <code>KEY=value</code>, каждый с новой строки</div>
                     </div>
                 </div>
@@ -150,7 +162,7 @@
 
     <script>
         function setupFileInput(inputId, outputId) {
-            document.getElementById(inputId).addEventListener('change', function() {
+            document.getElementById(inputId).addEventListener('change', function () {
                 const fileName = this.files[0] ? this.files[0].name : 'Выберите файл';
                 const output = document.getElementById(outputId);
                 if (output) {
@@ -162,12 +174,14 @@
 
         setupFileInput('ssh_key', 'ssh_key_name');
         setupFileInput('docker_image', 'docker_image_name');
-
-        document.getElementById('deployForm').addEventListener('submit', function(e) {
+        setupFileInput('dockerfile', 'dockerfile_name');
+        
+        document.getElementById('deployForm').addEventListener('submit', function (e) {
             const btn = this.querySelector('button[type="submit"]');
             btn.disabled = true;
             btn.innerHTML = 'Выполняется...';
         });
     </script>
 </body>
+
 </html>
