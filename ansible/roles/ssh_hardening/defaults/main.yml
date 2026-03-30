@@ -2,3 +2,4 @@
 ---
 # defaults file for ssh_hardening
 ssh_port : 22
+disable_pass_sshd: True

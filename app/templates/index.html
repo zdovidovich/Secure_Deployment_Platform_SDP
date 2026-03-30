@@ -79,6 +79,10 @@
                                     <input type="checkbox" id="enable_selinux" name="enable_selinux" checked>
                                     <label for="enable_selinux">SELinux (RHEL)</label>
                                 </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="disable_pass_sshd" name="disable_pass_sshd" checked>
+                                    <label for="disable_pass_sshd">Отключить вход по паролю для sshd</label>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -100,7 +104,7 @@
                             <label>Опции</label>
                             <div class="checkbox-group">
                                 <div class="checkbox-item">
-                                    <input type="checkbox" id="enable_fail2ban" name="enable_trivy" checked>
+                                    <input type="checkbox" id="enable_trivy" name="enable_trivy" checked>
                                     <label for="enable_trivy">Сканирование образа с помощью Trivy</label>
                                 </div>
                             </div>
@@ -160,6 +164,10 @@
                             placeholder="KEY=value&#10;DATABASE_URL=postgres://..."></textarea>
                         <div class="hint">Формат: <code>KEY=value</code>, каждый с новой строки</div>
                     </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="app_ro_fs" name="app_ro_fs">
+                        <label for="app_ro_fs">Смонтировать файловую систему контейнера как read-only</label>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn-primary">
@@ -184,7 +192,7 @@
         setupFileInput('ssh_key', 'ssh_key_name');
         setupFileInput('docker_image', 'docker_image_name');
         setupFileInput('dockerfile', 'dockerfile_name');
-        
+
         document.getElementById('deployForm').addEventListener('submit', function (e) {
             const btn = this.querySelector('button[type="submit"]');
             btn.disabled = true;

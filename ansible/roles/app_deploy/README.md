@@ -18,6 +18,8 @@ Role Variables
 4. app_ports: mapping ports (host:container)
 5. app_envs: environment variables for container
 6. app_volumes: attach volumes to container (host:container)
+7. app_ro_fs: mount the container’s root file system as read-only.
+
 Dependencies
 ------------
 

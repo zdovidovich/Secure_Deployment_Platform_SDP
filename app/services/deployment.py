@@ -109,11 +109,13 @@ class DeploymentService:
                 'app_image_path': image_path,
                 'selinux_state': "enforcing" if form_data.get('enable_selinux') == 'on' else "disabled",
                 'fail2ban_state': form_data.get('enable_fail2ban') == 'on',
+                'disable_pass_sshd': form_data.get('disable_pass_sshd') == 'on',
                 'app_image_name': validated_data['app_image_name'],
                 'app_container_name': validated_data['app_container_name'],
                 'app_ports': [f"{validated_data['app_host_port']}:{validated_data['app_container_port']}"],
                 'app_volumes': validated_data['app_volumes'],
                 'app_envs': validated_data['app_envs'],
+                'app_ro_fs': form_data.get('app_ro_fs') == 'on'
             }
             
             ansible_result = run_full_configuring(extra_vars, inventory_path)
@@ -128,7 +130,7 @@ class DeploymentService:
             cleanup_temp_files()
             
             # === ШАГ 8: Финальный статус ===
-            if ansible_result.failed:
+            if ansible_result.errored:
                 self.status = "error"
                 self.result = {
                     "error": "Ansible playbook failed",

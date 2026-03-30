@@ -28,6 +28,7 @@
       path: /etc/ssh/sshd_config
       regexp: "^.*PasswordAuthentication .*$"
       line: "PasswordAuthentication no"
+    when: disable_pass_sshd == True
     notify: Restart sshd
 
   - name: Disable root login via ssh 

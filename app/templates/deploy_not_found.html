@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDP — Сессия не найдена</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Libre+Franklin:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/deploy_not_found.css') }}">  
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="{{ url_for('deploy.index') }}" class="logo">SDP<span>Platform</span></a>
+        </div>
+    </nav>
+
+    <!-- Error Content -->
+    <div class="error-container">
+        <div class="error-card">
+            <div class="error-icon">🔍</div>
+            <div class="error-code">404</div>
+            <h1 class="error-title">Сессия не найдена</h1>
+            <p class="error-message">
+                Такого развёртывания в данный момент нет.<br>
+                Возможно, сессия уже завершена или была удалена.
+            </p>
+
+            <div class="btn-group">
+                <a href="{{ url_for('deploy.index') }}" class="btn-primary">
+                    ← На главную
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

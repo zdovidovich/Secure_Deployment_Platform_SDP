@@ -11,21 +11,18 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/deploy_status.css') }}">
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="nav">
         <div class="nav-inner">
             <a href="{{ url_for('deploy.index') }}" class="logo">SDP<span>Platform</span></a>
         </div>
     </nav>
 
-    <!-- Main Content -->
     <div class="container">
         <header class="page-header">
             <h1>Статус <span class="gold">развёртывания</span></h1>
             <p class="session-id">Сессия: {{ session_id }}</p>
         </header>
 
-        <!-- Status Bar -->
         <div class="status-bar">
             <div class="status-info">
                 <div class="status-indicator {{ status }}" id="statusIndicator"></div>
@@ -42,7 +39,6 @@
             </div>
         </div>
 
-        <!-- Console -->
         <div class="console-card">
             <div class="console-header">
                 <h2 class="console-title">
@@ -63,7 +59,6 @@
             </div>
         </div>
 
-        <!-- Final Report -->
         <div class="report-card" id="reportCard">
             <div class="report-header">
                 <div class="report-icon" id="reportIcon">✅</div>
@@ -72,7 +67,7 @@
             </div>
             
             <div class="report-grid" id="reportStats">
-                <!-- Статистика будет добавлена через JS -->
+
             </div>
 
             <div class="report-actions">
@@ -82,7 +77,6 @@
         </div>
     </div>
 
-    <!-- Connection Status -->
     <div class="connection-status" id="connectionStatus">
         <div class="connection-dot connected" id="connectionDot"></div>
         <span id="connectionText">Подключено</span>
@@ -98,13 +92,11 @@
         let isFinished = false;
         let logIndex = 0;
 
-        // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', () => {
             connectSSE();
             updateProgress();
         });
 
-        // Подключение к SSE
         function connectSSE() {
             if (eventSource) {
                 eventSource.close();
@@ -141,7 +133,6 @@
                     source: 'deployment'
                 });
 
-                // Попытка переподключения через 3 секунды
                 setTimeout(() => {
                     if (!isFinished) {
                         connectSSE();
@@ -150,7 +141,6 @@
             };
         }
 
-        // Добавление записи в консоль
         function addLogEntry(entry) {
             const consoleOutput = document.getElementById('consoleOutput');
             const timestamp = new Date(entry.timestamp).toLocaleTimeString('ru-RU');
@@ -168,13 +158,11 @@
             consoleBuffer.push(entry);
             logIndex++;
 
-            // Автопрокрутка вниз
             if (consoleOutput.scrollHeight - consoleOutput.scrollTop - consoleOutput.clientHeight < 100) {
                 scrollToBottom();
             }
         }
 
-        // Обновление статуса
         function updateStatus(status) {
             const indicator = document.getElementById('statusIndicator');
             const text = document.getElementById('statusText');
@@ -192,7 +180,6 @@
             text.textContent = statusMessages[status] || status;
         }
 
-        // Обновление прогресс-бара
         function updateProgress() {
             const progressFill = document.getElementById('progressFill');
             const stages = ['pending', 'running', 'success', 'error'];
@@ -201,7 +188,6 @@
             progressFill.style.width = `${Math.min(progress, 100)}%`;
         }
 
-        // Показать финальный отчёт
         function showFinalReport() {
             const reportCard = document.getElementById('reportCard');
             const reportIcon = document.getElementById('reportIcon');
@@ -249,7 +235,6 @@
             scrollToBottom();
         }
 
-        // Утилиты
         function scrollToBottom() {
             const consoleOutput = document.getElementById('consoleOutput');
             consoleOutput.scrollTop = consoleOutput.scrollHeight;

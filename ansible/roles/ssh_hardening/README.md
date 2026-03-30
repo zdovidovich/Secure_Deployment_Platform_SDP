@@ -12,6 +12,7 @@ Role Variables
 --------------
 
 1. ssh_port: int (default: 22) 
+2. disable_pass_sshd: bool (default: True)
 
 Dependencies
 ------------

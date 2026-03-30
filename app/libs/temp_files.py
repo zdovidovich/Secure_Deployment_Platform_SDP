@@ -3,7 +3,6 @@ import tempfile
 import uuid
 from werkzeug.utils import secure_filename
 import glob
-from libs.utils import get_project_root
 from libs.ansible import get_base_dir_ansible
 
 def get_base_dir():
@@ -64,7 +63,7 @@ def cleanup_temp_files(prefixes=('ssh_key_', 'docker_image_', 'dockerfile_', 'in
                 os.remove(file_path)
             except OSError:
                 pass  
-    for file_path in glob.glob(os.path.join(os.path.join(get_project_root(),  'ansible', 'inventory'), f'inventory_*')):
+    for file_path in glob.glob(os.path.join(os.path.join(get_base_dir_ansible(), 'inventory'), f'inventory_*')):
         try:
             os.remove(file_path)
         except OSError:
