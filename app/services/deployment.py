@@ -11,22 +11,23 @@ from libs.trivy import scan_image, format_trivy_result
 from libs.ansible import run_full_configuring
 from sse.broadcaster import SSEBroadcaster
 
+
 class DeploymentService:
     """
     Оркестрирует весь процесс деплоя:
     валидация → сканирование → Ansible → отчёт
     """
-    
+
     def __init__(self, session_id: str):
         self.session_id = session_id
         self.logger = SSEBroadcaster(session_id)
         self.status = "pending"  # pending, running, success, error
         self.result: Optional[Dict] = None
-    
+
     def execute(self, form_data: dict, file_paths: dict) -> Dict:
         """
         Главный метод: выполняет весь пайплайн деплоя.
-        
+
         Args:
             form_data: Словарь с данными формы
             file_paths: Словарь с путями к сохранённым файлам
@@ -34,66 +35,92 @@ class DeploymentService:
         """
         try:
             self.status = "running"
-            self.logger.info("🚀 Запуск процесса деплоя...")
-            
+            self.logger.info("Запуск процесса деплоя...")
+
             # === ШАГ 1: Файлы уже сохранены, используем пути ===
             self.logger.info("Загруженные файлы готовы")
             ssh_key_path = file_paths.get('ssh_key')
             image_path = file_paths.get('docker_image')
             dockerfile_path = file_paths.get('dockerfile')
-            
+
             # === ШАГ 2: Валидация ===
             self.logger.info("Проверка корректности данных...")
             is_valid, errors, validated_data = validate_all_data(
                 form_data, image_path, ssh_key_path
             )
+
             if not is_valid:
                 self.status = "error"
                 self.result = {"error": "Validation failed", "details": errors}
                 self.logger.error(f"Валидация не пройдена: {errors}")
                 return self.result
-            
+
             # === ШАГ 3: Hadolint (если есть Dockerfile) ===
             if dockerfile_path:
                 self.logger.info("Проверка Dockerfile (Hadolint)...")
                 hadolint_result = scan_dockerfile(dockerfile_path)
                 if hadolint_result['success']:
-                    formatted = format_hadolint_result(hadolint_result['issues'])
+                    formatted = format_hadolint_result(
+                        hadolint_result['issues'])
                     self.logger.hadolint(formatted)
                     if hadolint_result.get('errors'):
                         self.status = "error"
-                        self.result = {"error": "Hadolint found errors", "details": formatted}
-                        self.logger.error("Hadolint обнаружил критические ошибки")
-                        return self.result
-                else:
-                    self.status = "error"
-                    self.result = {"error": "Hadolint scan failed", "details": hadolint_result['error']}
-                    self.logger.error(f"Hadolint ошибка: {hadolint_result['error']}")
-                    return self.result
-            
-            # === ШАГ 4: Trivy ===
-            if form_data.get('enable_trivy') == "on":
-                self.logger.info("Сканирование образа (Trivy)...")
-                trivy_result = scan_image(image_path)
-                if trivy_result['success']:
-                    formatted = format_trivy_result(trivy_result['vulnerabilities'])
-                    self.logger.trivy(formatted)
-                    if trivy_result.get('critical_count', 0) + trivy_result.get('high_count', 0) > 0:
-                        self.status = "error"
                         self.result = {
-                            "error": "Vulnerabilities found",
-                            "critical": trivy_result['critical_count'],
-                            "high": trivy_result['high_count'],
-                            "details": formatted
-                        }
-                        self.logger.error(f"Найдено уязвимостей: CRITICAL={trivy_result['critical_count']}, HIGH={trivy_result['high_count']}")
+                            "error": "Hadolint found errors", "details": formatted}
+                        self.logger.error(
+                            "Hadolint обнаружил критические ошибки")
                         return self.result
                 else:
                     self.status = "error"
-                    self.result = {"error": "Trivy scan failed", "details": trivy_result['error']}
+                    self.result = {"error": "Hadolint scan failed",
+                                   "details": hadolint_result['error']}
+                    self.logger.error(
+                        f"Hadolint ошибка: {hadolint_result['error']}")
+                    return self.result
+
+            # === ШАГ 4: Trivy ===
+
+            if form_data.get('enable_trivy') == "on":
+                trivy_fail_on = form_data.get('trivy_fail_on', 'HIGH')
+                self.logger.info(
+                    f"Сканирование образа (Trivy), порог блокировки: {trivy_fail_on}...")
+
+                trivy_result = scan_image(
+                    image_path, fail_on_severity=trivy_fail_on)
+
+                if not trivy_result['success']:
+                    self.status = "error"
+                    self.result = {"error": "Trivy scan failed",
+                                   "details": trivy_result['error']}
                     self.logger.error(f"Trivy ошибка: {trivy_result['error']}")
                     return self.result
-            
+
+                formatted = format_trivy_result(
+                    trivy_result['vulnerabilities']
+                )
+                self.logger.trivy(formatted)
+
+                if trivy_result.get('blocked', False):
+                    self.status = "error"
+                    self.result = {
+                        "error": f"Найдено {trivy_result['blocking_count']} уязвимостей уровня {trivy_result['blocking_severity']}+",
+                        "blocking_count": trivy_result['blocking_count'],
+                        "blocking_severity": trivy_result['blocking_severity'],
+                        "severity_counts": trivy_result.get('severity_counts', {}),
+                        "details": formatted
+                    }
+                    self.logger.error(
+                        f"Деплой заблокирован: {trivy_result['blocking_count']} уязвимостей уровня "
+                        f"{trivy_result['blocking_severity']}+ (порог: {trivy_fail_on})"
+                    )
+                    return self.result
+
+                counts = trivy_result.get('severity_counts', {})
+                self.logger.info(
+                    f"Trivy: CRITICAL={counts.get('CRITICAL', 0)}, HIGH={counts.get('HIGH', 0)}, "
+                    f"MEDIUM={counts.get('MEDIUM', 0)}, LOW={counts.get('LOW', 0)}"
+                )
+
             # === ШАГ 5: Ansible Inventory ===
             self.logger.info("Подготовка Ansible inventory...")
             inventory_path = create_inventory_temp_file({
@@ -101,7 +128,8 @@ class DeploymentService:
                 'ansible_port': validated_data['ansible_port'],
                 'ansible_user': validated_data['ansible_user']
             }, ssh_key_path)
-            
+            a = []
+
             # === ШАГ 6: Ansible Playbook ===
             self.logger.info("Запуск Ansible playbook...")
             extra_vars = {
@@ -115,22 +143,24 @@ class DeploymentService:
                 'app_ports': [f"{validated_data['app_host_port']}:{validated_data['app_container_port']}"],
                 'app_volumes': validated_data['app_volumes'],
                 'app_envs': validated_data['app_envs'],
-                'app_ro_fs': form_data.get('app_ro_fs') == 'on'
+                'app_ro_fs': form_data.get('app_ro_fs') == 'on',
+                'app_cpus': validated_data.get('app_cpus', None),
+                'app_memory': validated_data.get('app_memory', None)
             }
-            
+
             ansible_result = run_full_configuring(extra_vars, inventory_path)
-            
+
             # Парсим логи Ansible и отправляем в SSE
             for line in ansible_result.stdout.read().split('\n'):
                 if line.strip():
                     self.logger.ansible(line)
-            
+
             # === ШАГ 7: Очистка ===
             self.logger.info("Очистка временных файлов...")
             cleanup_temp_files()
             
             # === ШАГ 8: Финальный статус ===
-            if ansible_result.errored:
+            if ansible_result.status != "successful":
                 self.status = "error"
                 self.result = {
                     "error": "Ansible playbook failed",
@@ -146,12 +176,12 @@ class DeploymentService:
                     "message": "Деплой успешно завершён"
                 }
                 self.logger.info("✅ Деплой успешно завершён!")
-            
+
             # Отправляем событие завершения
             self.logger.complete(self.result)
-            
+
             return self.result
-            
+
         except Exception as e:
             self.status = "error"
             self.result = {"error": f"Unexpected error: {str(e)}"}

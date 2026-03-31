@@ -85,6 +85,16 @@ DEPLOY_FORM_RULES: Dict[str, ValidationRule] = {
         error_msg='Переменная окружения должна быть в формате KEY=value',
         required=False
     ),
+    'app_cpus':ValidationRule(
+        pattern=r'^\d+(?:\.5)?$',
+        error_msg='Переменная окружения должна быть в формате KEY=value',
+        required=False
+    ),
+    'app_memory':ValidationRule(
+        pattern=r'^\d+[BKMGTP]?$',
+        error_msg='Переменная окружения должна быть в формате KEY=value',
+        required=False
+    ),
 }
 
 def validate_all_data(form_data: dict, file_path_image, file_path_private_ssh_key) -> Tuple[bool, List[str], dict]:

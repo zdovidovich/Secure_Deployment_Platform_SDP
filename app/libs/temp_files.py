@@ -14,9 +14,9 @@ def save_temp_file(file_obj, prefix='upload_'):
     Возвращает путь к файлу.
     """
     original_filename = secure_filename(file_obj.filename)
-    
+
     unique_name = f"{prefix}{uuid.uuid4().hex}_{original_filename}"
-    
+
     temp_dir = tempfile.gettempdir() 
 
     file_path = os.path.join(temp_dir, unique_name)

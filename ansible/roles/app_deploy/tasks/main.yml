@@ -47,6 +47,8 @@
       env: "{{ app_envs }}"
       volumes: "{{ app_volumes }}"
       read_only: "{{ app_ro_fs }}"
+      cpus: "{{ app_cpus }}"
+      memory: "{{ app_memory }}"
 
   always:
   - name: Delete image tar archive

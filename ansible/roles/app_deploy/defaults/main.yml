@@ -9,3 +9,5 @@ app_ports:
 app_envs: {} 
 app_volumes: []
 app_ro_fs: false
+app_cpus: null
+app_memory: null

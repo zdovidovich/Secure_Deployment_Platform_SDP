@@ -115,6 +115,26 @@ body {
     gap: 0.5rem;
 }
 
+.form-select-small {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: var(--dark-light);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.form-select-small:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+}
+
+
 .form-grid {
     display: grid;
     grid-template-columns: 1fr;

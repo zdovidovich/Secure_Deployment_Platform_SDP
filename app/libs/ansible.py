@@ -14,8 +14,8 @@ def run_check(file_path_inventory):
     module='ping',
     host_pattern='all'
 )
-    print(result.stdout.read())
-    print(json.dumps(result.stats, indent=4))
+    return result
+
 
 def run_full_configuring(extravars: dict, file_path_inventory):
     return run_playbook("configure.yml", extravars, file_path_inventory)
