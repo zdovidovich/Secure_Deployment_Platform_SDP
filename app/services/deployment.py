@@ -128,7 +128,6 @@ class DeploymentService:
                 'ansible_port': validated_data['ansible_port'],
                 'ansible_user': validated_data['ansible_user']
             }, ssh_key_path)
-            a = []
 
             # === ШАГ 6: Ansible Playbook ===
             self.logger.info("Запуск Ansible playbook...")
@@ -175,10 +174,8 @@ class DeploymentService:
                     "stats": ansible_result.stats,
                     "message": "Деплой успешно завершён"
                 }
-                self.logger.info("✅ Деплой успешно завершён!")
-
-            # Отправляем событие завершения
-            self.logger.complete(self.result)
+                self.logger.info("Деплой успешно завершён!")
+                self.logger.info("Рекомендуется перезапустить хост. После перезапуска можете ввести docker run -p `host_port:container_port` -d `имя контейнера` для запуска настроенного контейнера")
 
             return self.result
 
