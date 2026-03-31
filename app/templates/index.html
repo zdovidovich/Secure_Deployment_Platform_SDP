@@ -164,6 +164,18 @@
                             placeholder="KEY=value&#10;DATABASE_URL=postgres://..."></textarea>
                         <div class="hint">Формат: <code>KEY=value</code>, каждый с новой строки</div>
                     </div>
+                    <div class="form-group full-width">
+                        <label for="env_vars">CPU limits</label>
+                        <textarea id="env_vars" name="app_cpus"
+                            placeholder="1.5"></textarea>
+                        <div class="hint">Формат: </div>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="env_vars">Memory limits</label>
+                        <textarea id="env_vars" name="app_memory"
+                            placeholder="100M"></textarea>
+                        <div class="hint">Формат: &lt;Число&gt;&lt;единица измерения&gt;. Возможные единциы измерения:  </div>
+                    </div>
                     <div class="checkbox-item">
                         <input type="checkbox" id="app_ro_fs" name="app_ro_fs">
                         <label for="app_ro_fs">Смонтировать файловую систему контейнера как read-only</label>
