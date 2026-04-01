@@ -79,7 +79,6 @@ class DeploymentService:
                     return self.result
 
             # === ШАГ 4: Trivy ===
-
             if form_data.get('enable_trivy') == "on":
                 trivy_fail_on = form_data.get('trivy_fail_on', 'HIGH')
                 self.logger.info(
@@ -157,8 +156,9 @@ class DeploymentService:
             # === ШАГ 7: Очистка ===
             self.logger.info("Очистка временных файлов...")
             cleanup_temp_files()
-            
+
             # === ШАГ 8: Финальный статус ===
+
             if ansible_result.status != "successful":
                 self.status = "error"
                 self.result = {
@@ -169,14 +169,16 @@ class DeploymentService:
                 self.logger.error("Ansible завершился с ошибкой")
             else:
                 self.status = "success"
+                self.logger.info("Деплой успешно завершён!")
+                self.logger.info(
+                    "Возможно были изменены настройки безопасности на RHEL-системах: для применения SELinux может потребоваться перезагрузка."
+                )
                 self.result = {
                     "success": True,
                     "stats": ansible_result.stats,
                     "message": "Деплой успешно завершён"
                 }
-                self.logger.info("Деплой успешно завершён!")
-                self.logger.info("Рекомендуется перезапустить хост. После перезапуска можете ввести docker run -p `host_port:container_port` -d `имя контейнера` для запуска настроенного контейнера")
-
+                
             return self.result
 
         except Exception as e:
