@@ -88,6 +88,73 @@
                     </div>
                 </div>
 
+                <!-- После закрывающего </div> секции "Настройки безопасности" добавь: -->
+
+                <div class="form-section">
+                    <h3>Fail2Ban для приложений</h3>
+                    <div class="form-group full-width">
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="enable_container_fail2ban" name="enable_container_fail2ban">
+                                <label for="enable_container_fail2ban">
+                                    Защитить контейнер через Fail2Ban
+                                    <span class="hint"
+                                        style="display: block; margin-top: 0.25rem; font-size: 0.8rem; color: var(--text-muted);">
+                                        Требует, чтобы приложение писало логи в файл.
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="container-fail2ban-options"
+                        style="display: none; margin-top: 1rem; padding: 1rem; background: var(--dark-light); border-radius: 8px; border: 1px solid var(--border);">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="app_log_path">Путь к логу на хосте</label>
+                                <input type="text" id="app_log_path" name="app_log_path"
+                                    value="/var/log/app/access.log" placeholder="/var/log/app/access.log">
+                                <div class="hint">Этот файл будет смонтирован в контейнер и проверяться Fail2Ban</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="app_fail2ban_filter">Тип фильтра</label>
+                                <select id="app_fail2ban_filter" name="app_fail2ban_filter">
+                                    <option value="app-generic">Generic (401/403 ошибки)</option>
+                                    <option value="nginx-http-auth">Nginx HTTP Auth</option>
+                                    <option value="apache-auth">Apache Auth</option>
+                                    <option value="custom">Custom (свой regex)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" id="custom-regex-group" style="display: none; margin-top: 1rem;">
+                            <label for="app_fail2ban_regex">Failregex (для custom)</label>
+                            <textarea id="app_fail2ban_regex" name="app_fail2ban_regex"
+                                placeholder="^.*Failed login from &lt;HOST&gt;.*$"
+                                style="font-family: monospace; font-size: 0.85rem; min-height: 60px; width: 100%;"></textarea>
+                            <div class="hint">Используй <code>&lt;HOST&gt;</code> вместо IP-адреса</div>
+                        </div>
+
+                        <div class="form-grid" style="margin-top: 1rem;">
+                            <div class="form-group">
+                                <label for="app_fail2ban_maxretry">Max попытки</label>
+                                <input type="number" id="app_fail2ban_maxretry" name="app_fail2ban_maxretry" value="5" min="1"
+                                    max="20">
+                            </div>
+                            <div class="form-group">
+                                <label for="app_fail2ban_bantime">Бан (секунды)</label>
+                                <input type="number" id="app_fail2ban_bantime" name="app_fail2ban_bantime" value="3600" min="60"
+                                    step="60">
+                            </div>
+                            <div class="form-group">
+                                <label for="app_fail2ban_findtime">Окно (секунды)</label>
+                                <input type="number" id="app_fail2ban_findtime" name="app_fail2ban_findtime" value="600"
+                                    min="60" step="60">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-section">
                     <h3>Docker образ</h3>
                     <div class="form-group full-width">
@@ -263,6 +330,25 @@
             document.getElementById('enable_trivy').addEventListener('change', updateTrivyThresholdVisibility);
         });
 
+        document.addEventListener('DOMContentLoaded', () => {
+            const containerFail2banCheckbox = document.getElementById('enable_container_fail2ban');
+            const containerFail2banOptions = document.getElementById('container-fail2ban-options');
+            const fail2banFilterSelect = document.getElementById('app_fail2ban_filter');
+            const customRegexGroup = document.getElementById('custom-regex-group');
+
+            if (containerFail2banCheckbox) {
+                containerFail2banCheckbox.addEventListener('change', () => {
+                    containerFail2banOptions.style.display =
+                        containerFail2banCheckbox.checked ? 'block' : 'none';
+                });
+            }
+            if (fail2banFilterSelect) {
+                fail2banFilterSelect.addEventListener('change', () => {
+                    customRegexGroup.style.display =
+                        fail2banFilterSelect.value === 'custom' ? 'block' : 'none';
+                });
+            }
+        });
     </script>
 </body>
 

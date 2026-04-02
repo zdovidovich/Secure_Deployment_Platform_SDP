@@ -143,9 +143,16 @@ class DeploymentService:
                 'app_envs': validated_data['app_envs'],
                 'app_ro_fs': form_data.get('app_ro_fs') == 'on',
                 'app_cpus': validated_data.get('app_cpus', None),
-                'app_memory': validated_data.get('app_memory', None)
+                'app_memory': validated_data.get('app_memory', None),
+                'enable_container_fail2ban': form_data.get("enable_container_fail2ban") == "on",
+                'app_log_path': validated_data.get('app_log_path', '/var/log/app/access.log'),
+                'app_fail2ban_filter': validated_data.get('app_fail2ban_filter', 'app-generic'),
+                'app_fail2ban_regex': validated_data.get('app_fail2ban_regex', ''),
+                'app_fail2ban_maxretry': validated_data.get("app_fail2ban_maxretry", 5),
+                'app_fail2ban_bantime': validated_data.get("app_fail2ban_bantime", 86400),
+                'app_fail2ban_findtime': validated_data.get('app_fail2ban_findtime', 7200)
             }
-
+            print(extra_vars)
             ansible_result = run_full_configuring(extra_vars, inventory_path)
 
             # Парсим логи Ansible и отправляем в SSE
