@@ -2,54 +2,64 @@
 ---
 # tasks file for fail2ban_configuration
 
-- name: Validate port
+#app_log_path
+#app_fail2ban_filter 
+#app_fail2ban_regex
+#app_fail2ban_maxretry
+#app_fail2ban_bantime
+#app_fail2ban_findtime
+#app_ports=app_host_port/app_fail2ban_ports
+
+- name: Validate port(s)
   assert:
     that: 
-    - ssh_port >= 0
-    - ssh_port <= 65535
-    fail_msg: "SSH port is not valid"
+    - item >= 0
+    - item <= 65535
+    fail_msg: "Port(s) is not valid"
+  loop: "{{ app_ports | split(',') | map('int') | list }}"
 
-- name: Install fail2ban (Debian-based systems)
-  apt:
-    name: fail2ban
-    state: present
-  when: ansible_facts.os_family == "Debian"
+- name: Install fail2ban
+  include_role: 
+    name: fail2ban_install
 
-- name: Install fail2ban (RHEL-based systems)
-  dnf:
-    name: fail2ban
-    state: present
-  when: ansible_facts.os_family == "RedHat"
-
-- name: Generate and copy jail.local
-  template: 
-    src: jail.local.j2
-    dest: /etc/fail2ban/jail.local
+- name: Create log file if not exists
+  copy:
+    content: ''
+    dest: "{{ app_log_path }}"
     mode: 0644
     owner: root
     group: root
+    force: no
+
+- name: Set fail2ban regex for generic
+  set_fact: 
+    app_fail2ban_regex: ^<HOST> - - .*"(GET|POST|PUT|DELETE) .*" (401|403) .*$
+  when: app_fail2ban_filter == "app-generic"
+
+
+- name: Create template for filter
+  template: 
+    src: template.conf
+    dest: "/etc/fail2ban/filter.d/{{ app_fail2ban_filter }}.conf"
+    mode: 0644
+    owner: root
+    group: root
+  when: app_fail2ban_filter not in ['apache-auth', 'nginx-http-auth']
   notify: Restart fail2ban
 
-- name: Create log file for ssh
-  copy:
-    content: ''
-    dest: "{{ log_ssh_path }}"
-    mode: 0644
-    owner: root
-    group: root
-    force: no
-
-- name: Create log file for fail2ban
-  copy:
-    content: ''
-    dest: /var/log/fail2ban.log
-    mode: 0644
-    owner: root
-    group: root
-    force: no
-
-- name: Enable fail2ban
-  service:
-    name: fail2ban
-    state: started
-    enabled: true 
+- name: Insert jail rule to jail.local (not custom)
+  blockinfile: 
+    path: /etc/fail2ban/jail.local
+    append_newline: true
+    prepend_newline: true
+    marker: "# < Ansible managed block >"
+    block: |
+      [{{ app_fail2ban_filter }}]
+      enabled = true
+      port = {{ app_ports }}
+      filter = {{ app_fail2ban_filter }}
+      logpath = {{ app_log_path }}
+      maxretry = {{ app_fail2ban_maxretry }}
+      bantime = {{ app_fail2ban_bantime }}
+      findtime = {{ app_fail2ban_findtime }}
+  notify: Restart fail2ban

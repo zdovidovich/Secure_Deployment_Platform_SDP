@@ -134,7 +134,7 @@ class DeploymentService:
                 'ssh_port': validated_data['ssh_port'],
                 'app_image_path': image_path,
                 'selinux_state': "enforcing" if form_data.get('enable_selinux') == 'on' else "disabled",
-                'fail2ban_state': form_data.get('enable_fail2ban') == 'on',
+                'ssh_fail2ban_state': form_data.get('enable_fail2ban') == 'on',
                 'disable_pass_sshd': form_data.get('disable_pass_sshd') == 'on',
                 'app_image_name': validated_data['app_image_name'],
                 'app_container_name': validated_data['app_container_name'],

@@ -12,11 +12,11 @@
     include_role: 
       name: ssh_hardening
   
-  - name: Configure fail2ban
+  - name: Configure fail2ban for ssh
     include_role:
-      name: fail2ban_configuration
-    when: fail2ban_state == True
-    
+      name: ssh_fail2ban_configuration
+    when: ssh_fail2ban_state == True
+  
   - name: Install docker
     include_role:
       name: docker_install
@@ -24,3 +24,9 @@
   - name: Deploy app
     include_role:
       name: app_deploy
+
+  - name: Configure fail2ban for docker container
+    include_role:
+      name: fail2ban_configuration
+    when: ssh_fail2ban_state == True
+  

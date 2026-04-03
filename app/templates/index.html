@@ -73,7 +73,7 @@
                             <div class="checkbox-group">
                                 <div class="checkbox-item">
                                     <input type="checkbox" id="enable_fail2ban" name="enable_fail2ban" checked>
-                                    <label for="enable_fail2ban">Fail2Ban</label>
+                                    <label for="enable_fail2ban">Fail2Ban для sshd</label>
                                 </div>
                                 <div class="checkbox-item">
                                     <input type="checkbox" id="enable_selinux" name="enable_selinux" checked>
@@ -87,8 +87,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- После закрывающего </div> секции "Настройки безопасности" добавь: -->
 
                 <div class="form-section">
                     <h3>Fail2Ban для приложений</h3>
@@ -112,8 +110,8 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label for="app_log_path">Путь к логу на хосте</label>
-                                <input type="text" id="app_log_path" name="app_log_path"
-                                    value="/var/log/app/access.log" placeholder="/var/log/app/access.log">
+                                <input type="text" id="app_log_path" name="app_log_path" value="/var/log/app/access.log"
+                                    placeholder="/var/log/app/access.log">
                                 <div class="hint">Этот файл будет смонтирован в контейнер и проверяться Fail2Ban</div>
                             </div>
                             <div class="form-group">
@@ -138,18 +136,27 @@
                         <div class="form-grid" style="margin-top: 1rem;">
                             <div class="form-group">
                                 <label for="app_fail2ban_maxretry">Max попытки</label>
-                                <input type="number" id="app_fail2ban_maxretry" name="app_fail2ban_maxretry" value="5" min="1"
-                                    max="20">
+                                <input type="number" id="app_fail2ban_maxretry" name="app_fail2ban_maxretry" value="5"
+                                    min="1" max="20">
                             </div>
                             <div class="form-group">
                                 <label for="app_fail2ban_bantime">Бан (секунды)</label>
-                                <input type="number" id="app_fail2ban_bantime" name="app_fail2ban_bantime" value="3600" min="60"
-                                    step="60">
+                                <input type="number" id="app_fail2ban_bantime" name="app_fail2ban_bantime" value="3600"
+                                    min="60" step="60">
                             </div>
                             <div class="form-group">
                                 <label for="app_fail2ban_findtime">Окно (секунды)</label>
                                 <input type="number" id="app_fail2ban_findtime" name="app_fail2ban_findtime" value="600"
                                     min="60" step="60">
+                            </div>
+                            <div class="form-group">
+                                <label for="app_fail2ban_ports">Порты для защиты</label>
+                                <input type="text" id="app_fail2ban_ports" name="app_fail2ban_ports" placeholder="80,443"
+                                    value="">
+                                <div class="hint">
+                                    Оставьте пустым для использования порта приложения.<br>
+                                    Можно указать несколько через запятую: <code>80,443,8080</code>
+                                </div>
                             </div>
                         </div>
                     </div>
