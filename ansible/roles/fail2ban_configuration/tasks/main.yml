@@ -8,7 +8,7 @@
 #app_fail2ban_maxretry
 #app_fail2ban_bantime
 #app_fail2ban_findtime
-#app_ports=app_host_port/app_fail2ban_ports
+#app_fail2ban_ports=app_host_port/app_fail2ban_ports
 
 - name: Validate port(s)
   assert:
@@ -16,7 +16,7 @@
     - item >= 0
     - item <= 65535
     fail_msg: "Port(s) is not valid"
-  loop: "{{ app_ports | split(',') | map('int') | list }}"
+  loop: "{{ app_fail2ban_ports | split(',') | map('int') | list }}"
 
 - name: Install fail2ban
   include_role: 
@@ -35,7 +35,6 @@
   set_fact: 
     app_fail2ban_regex: ^<HOST> - - .*"(GET|POST|PUT|DELETE) .*" (401|403) .*$
   when: app_fail2ban_filter == "app-generic"
-
 
 - name: Create template for filter
   template: 
@@ -56,7 +55,7 @@
     block: |
       [{{ app_fail2ban_filter }}]
       enabled = true
-      port = {{ app_ports }}
+      port = {{ app_fail2ban_ports }}
       filter = {{ app_fail2ban_filter }}
       logpath = {{ app_log_path }}
       maxretry = {{ app_fail2ban_maxretry }}

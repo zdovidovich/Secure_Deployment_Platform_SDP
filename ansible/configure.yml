@@ -28,5 +28,5 @@
   - name: Configure fail2ban for docker container
     include_role:
       name: fail2ban_configuration
-    when: ssh_fail2ban_state == True
+    when: enable_container_fail2ban == True
   

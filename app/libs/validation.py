@@ -132,6 +132,12 @@ DEPLOY_FORM_RULES: Dict[str, ValidationRule] = {
         required=False,
         to_int=True
     ),
+    'app_fail2ban_ports': ValidationRule(
+        pattern=r'^\d+(?:,\d+)*$',
+        error_msg='Неправильно заданы порты для fail2ban',
+        required=False
+    ),
+    
 }
 
 

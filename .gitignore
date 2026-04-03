@@ -209,3 +209,4 @@ __marimo__/
 
 # Catalog for garbage
 tmp/
+ansible/artifacts

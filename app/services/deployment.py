@@ -131,7 +131,7 @@ class DeploymentService:
             # === ШАГ 6: Ansible Playbook ===
             self.logger.info("Запуск Ansible playbook...")
             extra_vars = {
-                'ssh_port': validated_data['ssh_port'],
+                'ssh_port': validated_data.get('ssh_port', validated_data['ansible_port']),
                 'app_image_path': image_path,
                 'selinux_state': "enforcing" if form_data.get('enable_selinux') == 'on' else "disabled",
                 'ssh_fail2ban_state': form_data.get('enable_fail2ban') == 'on',
@@ -150,9 +150,10 @@ class DeploymentService:
                 'app_fail2ban_regex': validated_data.get('app_fail2ban_regex', ''),
                 'app_fail2ban_maxretry': validated_data.get("app_fail2ban_maxretry", 5),
                 'app_fail2ban_bantime': validated_data.get("app_fail2ban_bantime", 86400),
-                'app_fail2ban_findtime': validated_data.get('app_fail2ban_findtime', 7200)
+                'app_fail2ban_findtime': validated_data.get('app_fail2ban_findtime', 7200),
+                'app_fail2ban_ports': validated_data.get("app_fail2ban_ports", validated_data['app_host_port'])
             }
-            print(extra_vars)
+            
             ansible_result = run_full_configuring(extra_vars, inventory_path)
 
             # Парсим логи Ansible и отправляем в SSE

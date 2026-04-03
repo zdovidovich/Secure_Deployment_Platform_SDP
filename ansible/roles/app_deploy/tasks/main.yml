@@ -34,8 +34,6 @@
       src: "{{ app_image_path }}"
       dest: "/tmp/{{ app_container_name }}__{{ now(utc=true,fmt='%Y-%m-%d__%H:%M:%S') }}"
     register: result_copying
-    async: 3600
-    poll: 20
       
   - name: Load image archive to docker
     community.docker.docker_image_load:

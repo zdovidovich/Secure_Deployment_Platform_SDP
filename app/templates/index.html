@@ -25,7 +25,7 @@
             <h1>Secure <span class="gold">Deployment</span> Platform</h1>
         </header>
 
-        <form action="/deploy" method="POST" enctype="multipart/form-data" id="deployForm">
+        <form action="/deploy/" method="POST" enctype="multipart/form-data" id="deployForm">
             <div class="form-card">
 
                 <div class="form-section">
@@ -64,8 +64,8 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="ssh_port">Новый порт SSH</label>
-                            <input type="number" id="ssh_port" name="ssh_port" value="2222" min="1" max="65535">
-                            <div class="hint">Оставьте текущий порт sshd (вероятно, <code>22</code>), чтобы не менять
+                            <input type="number" id="ssh_port" name="ssh_port" value="22" min="1" max="65535">
+                            <div class="hint">Оставьте в поле текущий SSH port, чтобы не менять
                             </div>
                         </div>
                         <div class="form-group">
@@ -98,7 +98,7 @@
                                     Защитить контейнер через Fail2Ban
                                     <span class="hint"
                                         style="display: block; margin-top: 0.25rem; font-size: 0.8rem; color: var(--text-muted);">
-                                        Требует, чтобы приложение писало логи в файл.
+                                        Требует, чтобы приложение писало логи в файл, который будет доступен с хоста
                                     </span>
                                 </label>
                             </div>
@@ -112,7 +112,7 @@
                                 <label for="app_log_path">Путь к логу на хосте</label>
                                 <input type="text" id="app_log_path" name="app_log_path" value="/var/log/app/access.log"
                                     placeholder="/var/log/app/access.log">
-                                <div class="hint">Этот файл будет смонтирован в контейнер и проверяться Fail2Ban</div>
+                                <div class="hint">Не забудьте примонтировть данный файл при настройке контейнера</div>
                             </div>
                             <div class="form-group">
                                 <label for="app_fail2ban_filter">Тип фильтра</label>
@@ -130,7 +130,7 @@
                             <textarea id="app_fail2ban_regex" name="app_fail2ban_regex"
                                 placeholder="^.*Failed login from &lt;HOST&gt;.*$"
                                 style="font-family: monospace; font-size: 0.85rem; min-height: 60px; width: 100%;"></textarea>
-                            <div class="hint">Используй <code>&lt;HOST&gt;</code> вместо IP-адреса</div>
+                            <div class="hint">Используйте <code>&lt;HOST&gt;</code> вместо IP-адреса</div>
                         </div>
 
                         <div class="form-grid" style="margin-top: 1rem;">
@@ -257,7 +257,7 @@
                             <input type="text" id="app_memory" name="app_memory" placeholder="512M"
                                 pattern="^\d+[BKMGTP]?$">
                             <div class="hint">Формат: <code>число+единица</code> (например: <code>256M</code>,
-                                <code>1G</code>)
+                                <code>1G</code>). Доступные единицы: B, K, M, G, T, P 
                             </div>
                         </div>
                     </div>
