@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect
 from routes.deploy import deploy_bp
 
 app = Flask(__name__)
@@ -10,4 +10,4 @@ def index():
     return redirect('deploy', 301)
 
 if __name__ == '__main__':
-    app.run(debug=True, host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=8080)

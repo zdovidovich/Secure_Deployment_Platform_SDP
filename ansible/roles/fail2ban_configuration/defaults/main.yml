@@ -1,3 +1,10 @@
 #SPDX-License-Identifier: MIT-0
 ---
 # defaults file for fail2ban_configuration
+app_log_path: /var/log/nginx/access.log
+app_fail2ban_filter: filter
+app_fail2ban_regex: "^<HOST> bad pass$" # just an example
+app_fail2ban_maxretry: 5
+app_fail2ban_bantime: 3600
+app_fail2ban_findtime: 600
+app_fail2ban_ports: 80,443

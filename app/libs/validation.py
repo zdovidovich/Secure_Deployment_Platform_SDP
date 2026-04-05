@@ -69,7 +69,7 @@ DEPLOY_FORM_RULES: Dict[str, ValidationRule] = {
         required=True
     ),
     'app_container_name': ValidationRule(
-        pattern=r'^[a-zA-Z0-9][a-zA-Z0-9_.-]*$',
+        pattern=r'^[a-zA-Z0-9][a-zA-Z0-9_.-]+$',
         error_msg='Неверный формат имени контейнера',
         required=True
     ),

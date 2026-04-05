@@ -1,11 +1,11 @@
 #SPDX-License-Identifier: MIT-0
+# tasks file for docker_install
 ---
 
 - name: Gather the package facts
   ansible.builtin.package_facts:
     manager: auto
 
-# tasks file for docker_install
 - block: # Debian based
   - name: Delete old docker packages
     apt: 
@@ -115,7 +115,7 @@
     name: docker
     state: present
 
-- name: adding ubuntu to docker group
+- name: adding ansible user to docker group
   user:
     name: "{{ ansible_user }}"
     groups: docker

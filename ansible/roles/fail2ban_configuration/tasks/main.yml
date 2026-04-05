@@ -2,14 +2,6 @@
 ---
 # tasks file for fail2ban_configuration
 
-#app_log_path
-#app_fail2ban_filter 
-#app_fail2ban_regex
-#app_fail2ban_maxretry
-#app_fail2ban_bantime
-#app_fail2ban_findtime
-#app_fail2ban_ports=app_host_port/app_fail2ban_ports
-
 - name: debug
   debug: 
     msg: "{{ app_fail2ban_ports | type_debug }}"
@@ -48,7 +40,7 @@
     app_fail2ban_final_regex: '^<HOST> - - .*"(GET|POST|PUT|DELETE) .*" (401|403) .*$'
   when: app_fail2ban_filter | trim == "app-generic"
 
-- name: Set fail2ban regex for generic
+- name: Set fail2ban regex for other
   set_fact: 
     app_fail2ban_final_regex: "{{ app_fail2ban_regex }}"
   when: app_fail2ban_filter | trim != "app-generic"
@@ -60,10 +52,10 @@
     mode: 0644
     owner: root
     group: root
-  when: app_fail2ban_filter not in ['apache-auth', 'nginx-http-auth']
+  when: app_fail2ban_filter not in preinstalled_fail2ban_filters
   notify: Restart fail2ban
 
-- name: Insert jail rule to jail.local (not custom)
+- name: Insert jail rule to jail.local
   blockinfile: 
     path: /etc/fail2ban/jail.local
     append_newline: true

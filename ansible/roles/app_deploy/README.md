@@ -22,6 +22,8 @@ Role Variables
 8. app_memory: memory limit
 9. app_cpus: cpecify how much of the available CPU resources a container can use
 
+Default values for this role are empty
+
 Dependencies
 ------------
 
@@ -34,7 +36,7 @@ Example Playbook
     include_role:
       name: app_deploy
     vars:
-      app_image_path: nginx.image
+      app_image_path: nginx.tar
       app_image_name: nginx
       app_container_name: nginx
       app_host_port: 80

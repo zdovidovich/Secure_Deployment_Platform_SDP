@@ -6,16 +6,16 @@ Installs docker.
 Requirements
 ------------
 
-Supported systems:
+Supported (tested) systems:
 ------------
 
-Ubuntu
-Debian 
-RHEL
-CentOS
-Fedora
+Ubuntu (Ubuntu Server 24.04.4 LTS)
+Debian (12)
+RHEL (Rocky Linux 10.1)
+CentOS (10)
+Fedora (Fedora Server 43)
 
-May work on debian- and RHEL-based systems but not verified 
+May work on other debian- and RHEL-based systems but not verified 
 
 Role Variables
 --------------
