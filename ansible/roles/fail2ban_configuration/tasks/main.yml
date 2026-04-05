@@ -10,17 +10,29 @@
 #app_fail2ban_findtime
 #app_fail2ban_ports=app_host_port/app_fail2ban_ports
 
+- name: debug
+  debug: 
+    msg: "{{ app_fail2ban_ports | type_debug }}"
+
 - name: Validate port(s)
   assert:
     that: 
     - item >= 0
     - item <= 65535
     fail_msg: "Port(s) is not valid"
-  loop: "{{ app_fail2ban_ports | split(',') | map('int') | list }}"
+  loop: "{{ app_fail2ban_ports | string | split(',') | map('int') | list }}"
 
 - name: Install fail2ban
   include_role: 
     name: fail2ban_install
+
+- name: Create parent dirs if not exist
+  ansible.builtin.file:
+    path: "{{ app_log_path | dirname }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
 
 - name: Create log file if not exists
   copy:
@@ -33,8 +45,13 @@
 
 - name: Set fail2ban regex for generic
   set_fact: 
-    app_fail2ban_regex: ^<HOST> - - .*"(GET|POST|PUT|DELETE) .*" (401|403) .*$
-  when: app_fail2ban_filter == "app-generic"
+    app_fail2ban_final_regex: '^<HOST> - - .*"(GET|POST|PUT|DELETE) .*" (401|403) .*$'
+  when: app_fail2ban_filter | trim == "app-generic"
+
+- name: Set fail2ban regex for generic
+  set_fact: 
+    app_fail2ban_final_regex: "{{ app_fail2ban_regex }}"
+  when: app_fail2ban_filter | trim != "app-generic"
 
 - name: Create template for filter
   template: 
@@ -51,7 +68,6 @@
     path: /etc/fail2ban/jail.local
     append_newline: true
     prepend_newline: true
-    marker: "# < Ansible managed block >"
     block: |
       [{{ app_fail2ban_filter }}]
       enabled = true

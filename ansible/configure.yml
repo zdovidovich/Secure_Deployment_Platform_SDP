@@ -21,12 +21,13 @@
     include_role:
       name: docker_install
 
-  - name: Deploy app
-    include_role:
-      name: app_deploy
-
   - name: Configure fail2ban for docker container
     include_role:
       name: fail2ban_configuration
     when: enable_container_fail2ban == True
+
+  - name: Deploy app
+    include_role:
+      name: app_deploy
+
   

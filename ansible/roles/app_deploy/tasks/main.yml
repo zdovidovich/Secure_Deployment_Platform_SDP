@@ -35,6 +35,9 @@
       dest: "/tmp/{{ app_container_name }}__{{ now(utc=true,fmt='%Y-%m-%d__%H:%M:%S') }}"
     register: result_copying
       
+  - name: debug
+    debug: var=result_copying
+
   - name: Load image archive to docker
     community.docker.docker_image_load:
       path: "{{ result_copying.dest }}"
