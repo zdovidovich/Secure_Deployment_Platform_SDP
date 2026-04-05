@@ -48,7 +48,6 @@ DEPLOY_FORM_RULES: Dict[str, ValidationRule] = {
     'ssh_port': ValidationRule(
         pattern=r'^\d+$',
         error_msg='SSH порт должен быть числом',
-        required=True,
         to_int=True
     ),
     'app_host_port': ValidationRule(
@@ -85,7 +84,7 @@ DEPLOY_FORM_RULES: Dict[str, ValidationRule] = {
         required=False
     ),
     'app_envs': ValidationRule(
-        pattern=r'^[A-Za-z_][A-Za-z0-9_]*=.*$',
+        pattern=r'^[A-Za-z_][A-Za-z0-9_]*=[A-Za-z0-9_]*$',
         error_msg='Переменная окружения должна быть в формате KEY=value',
         required=False
     ),
@@ -110,7 +109,7 @@ DEPLOY_FORM_RULES: Dict[str, ValidationRule] = {
         required=False
     ),
     'app_fail2ban_regex': ValidationRule(
-        pattern=r'^.*$',
+        pattern=r'^.*<HOST>.*$',
         error_msg='Неверный формат регулярного выражения',
         required=False
     ),
@@ -224,7 +223,7 @@ def validate_form_data(form_data: dict) -> Tuple[bool, List[str], dict]:
         elif processed_value is not None:
             validated_data[field_name] = processed_value
 
-    volumes_pattern = re.compile(r'^[^:]+:[^:]+$')
+    volumes_pattern = re.compile(DEPLOY_FORM_RULES['app_volumes'].pattern)
     volumes_errors = validate_multiline_field(
         value=form_data.get('app_volumes', ''),
         line_pattern=volumes_pattern,
@@ -234,6 +233,22 @@ def validate_form_data(form_data: dict) -> Tuple[bool, List[str], dict]:
     errors.extend(volumes_errors)
 
     if not volumes_errors and form_data.get('app_volumes', '').strip():
+        
+        unique_volumes_host = []
+        unique_volumes_container = []
+
+        for line in form_data.get('app_volumes', '').splitlines():
+            new_line = line.split(":")
+
+            if new_line[0] not in unique_volumes_host:
+                unique_volumes_host.append(new_line[0])
+            else:
+                errors.append(f"app_volumes: {new_line[0]} используется несколько раз")
+            if new_line[1] not in unique_volumes_container:
+                unique_volumes_container.append(new_line[1])
+            else:
+                errors.append(f"app_volumes: {new_line[1]} используется несколько раз")
+                    
         validated_data['app_volumes'] = [
             line.strip() for line in form_data.get('app_volumes', '').splitlines()
             if line.strip()
@@ -241,7 +256,7 @@ def validate_form_data(form_data: dict) -> Tuple[bool, List[str], dict]:
     else:
         validated_data['app_volumes'] = []
 
-    env_pattern = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*=.*$')
+    env_pattern = re.compile(DEPLOY_FORM_RULES['app_envs'].pattern)
     env_errors = validate_multiline_field(
         value=form_data.get('app_envs', ''),
         line_pattern=env_pattern,
@@ -251,6 +266,16 @@ def validate_form_data(form_data: dict) -> Tuple[bool, List[str], dict]:
     errors.extend(env_errors)
 
     if not env_errors and form_data.get('app_envs', '').strip():
+        unique_env= []
+
+        for line in form_data.get('app_envs', '').splitlines():
+            new_line = line.split("=")
+
+            if new_line[0] not in unique_env:
+                unique_env.append(new_line[0])
+            else:
+                errors.append(f"app_envs: {new_line[0]} используется несколько раз")
+
         validated_data['app_envs'] = {}
         for line in form_data.get('app_envs', '').splitlines():
             line = line.strip()

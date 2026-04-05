@@ -62,7 +62,7 @@ class DeploymentService:
                 if hadolint_result['success']:
                     formatted = format_hadolint_result(
                         hadolint_result['issues'])
-                    self.logger.hadolint(formatted)
+                    self.logger.hadolint(formatted[-1])
                     if hadolint_result.get('errors'):
                         self.status = "error"
                         self.result = {
