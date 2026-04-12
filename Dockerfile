@@ -1,12 +1,13 @@
-FROM python:3.13.12-alpine
+FROM python:3.13.13-alpine
 
 WORKDIR /SDP
 
 RUN apk update && apk upgrade
-RUN apk add --no-cache ansible
+RUN apk add --no-cache ansible=13.0.0-r0
+RUN apk add openssh-client=10.2_p1-r0
 
 COPY ./app/requirements.txt /SDP/app/requirements.txt
-RUN pip install --no-cache-dir --upgrade pip && \
+RUN pip install --no-cache-dir --upgrade pip==26.0.1 && \
     pip install --no-cache-dir -r /SDP/app/requirements.txt
         
 RUN ansible-galaxy collection install --no-cache community.docker
