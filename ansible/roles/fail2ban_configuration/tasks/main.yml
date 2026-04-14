@@ -2,13 +2,17 @@
 ---
 # tasks file for fail2ban_configuration
 
+- name: debug
+  debug:
+    msg: "{{ fail2ban_configuration_app_ports }} {{ fail2ban_configuration_app_log_path }} {{ fail2ban_configuration_app_filter }} {{ fail2ban_configuration_app_maxretry }}"
+
 - name: Validate port(s)
   ansible.builtin.assert:
     that:
       - item >= 0
       - item <= 65535
     fail_msg: "Port(s) is not valid"
-  loop: "{{ fail2ban_configuration_app_fail2ban_ports | string | split(',') | map('int') | list }}"
+  loop: "{{ fail2ban_configuration_app_ports | string | split(',') | map('int') | list }}"
 
 - name: Install fail2ban
   ansible.builtin.include_role:
@@ -33,22 +37,22 @@
 
 - name: Set fail2ban regex for generic
   ansible.builtin.set_fact:
-    fail2ban_configuration_app_fail2ban_final_regex: '^<HOST> - - .*"(GET|POST|PUT|DELETE) .*" (401|403) .*$'
-  when: fail2ban_configuration_app_fail2ban_filter | trim == "app-generic"
+    fail2ban_configuration_app_final_regex: '^<HOST> - - .*"(GET|POST|PUT|DELETE) .*" (401|403) .*$'
+  when: fail2ban_configuration_app_filter | trim == "app-generic"
 
 - name: Set fail2ban regex for other
   ansible.builtin.set_fact:
-    fail2ban_configuration_app_fail2ban_final_regex: "{{ app_fail2ban_regex }}"
-  when: fail2ban_configuration_app_fail2ban_filter | trim != "app-generic"
+    fail2ban_configuration_app_final_regex: "{{ fail2ban_configuration_app_regex }}"
+  when: fail2ban_configuration_app_filter | trim != "app-generic"
 
 - name: Create template for filter
   ansible.builtin.template:
     src: template.conf
-    dest: "/etc/fail2ban/filter.d/{{ fail2ban_configuration_app_fail2ban_filter }}.conf"
+    dest: "/etc/fail2ban/filter.d/{{ fail2ban_configuration_app_filter }}.conf"
     mode: "0644"
     owner: root
     group: root
-  when: fail2ban_configuration_app_fail2ban_filter not in fail2ban_configuration_preinstalled_fail2ban_filters
+  when: fail2ban_configuration_app_filter not in fail2ban_configuration_preinstalled_filters
   notify: Restart fail2ban
 
 - name: Insert jail rule to jail.local
@@ -57,12 +61,12 @@
     append_newline: true
     prepend_newline: true
     block: |
-      [{{ fail2ban_configuration_app_fail2ban_filter }}]
+      [{{ fail2ban_configuration_app_filter }}]
       enabled = true
-      port = {{ fail2ban_configuration_app_fail2ban_ports }}
-      filter = {{ fail2ban_configuration_app_fail2ban_filter }}
+      port = {{ fail2ban_configuration_app_ports }}
+      filter = {{ fail2ban_configuration_app_filter }}
       logpath = {{ fail2ban_configuration_app_log_path }}
-      maxretry = {{ fail2ban_configuration_app_fail2ban_maxretry }}
-      bantime = {{ fail2ban_configuration_app_fail2ban_bantime }}
-      findtime = {{ fail2ban_configuration_app_fail2ban_findtime }}
+      maxretry = {{ fail2ban_configuration_app_maxretry }}
+      bantime = {{ fail2ban_configuration_app_bantime }}
+      findtime = {{ fail2ban_configuration_app_findtime }}
   notify: Restart fail2ban

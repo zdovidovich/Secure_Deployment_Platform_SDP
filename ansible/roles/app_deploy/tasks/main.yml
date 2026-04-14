@@ -32,7 +32,7 @@
 
     - name: Copy image archive to host
       ansible.builtin.copy:
-        src: "{{ app_image_path }}"
+        src: "{{ app_deploy_image_path }}"
         dest: "/tmp/{{ app_deploy_container_name }}__{{ now(utc=true, fmt='%Y-%m-%d__%H:%M:%S') }}"
         owner: root
         group: root

@@ -24,12 +24,12 @@
       when: ansible_facts.selinux.status == "disabled" and selinux_configuration_state != "disabled"
 
     - name: Set SELinux mode
-      community.general.selinux:
+      selinux:
         state: "{{ selinux_configuration_state }}"
         policy: targeted
 
     - name: "Open port for selinux type"
-      community.general.seport:
+      seport:
         ports: "{{ item.port }}"
         proto: tcp
         setype: "{{ item.type }}"

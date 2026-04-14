@@ -14,17 +14,15 @@ def scan_image(image_path: str, fail_on_severity: str = 'HIGH') -> dict:
     Returns:
         dict с результатами сканирования и решением о блокировке
     """
-    # Порядок уровней критичности (от низкого к высокому)
     SEVERITY_ORDER = ['UNKNOWN', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
     
-    # === ШАГ 1: Сканируем ВСЕ уязвимости (не фильтруем по severity) ===
     success, output, error = run_binary_scanner(
         binary_path=TRIVY_PATH,
         args=[
             'image',
             '--input', image_path,
             '--format', 'json',
-            '--exit-code', '0',      # Никогда не падать по коду возврата
+            '--exit-code', '0',
             '--no-progress',
         ],
         parse_json=True
@@ -38,14 +36,12 @@ def scan_image(image_path: str, fail_on_severity: str = 'HIGH') -> dict:
             'error': error
         }
     
-    # === ШАГ 2: Извлекаем все уязвимости ===
     vulnerabilities = []
     if isinstance(output, dict) and 'Results' in output:
         for result in output['Results']:
             if 'Vulnerabilities' in result:
                 vulnerabilities.extend(result['Vulnerabilities'])
     
-    # === ШАГ 3: Считаем по уровням ===
     severity_counts = {
         'CRITICAL': 0,
         'HIGH': 0,
@@ -59,19 +55,16 @@ def scan_image(image_path: str, fail_on_severity: str = 'HIGH') -> dict:
         if sev in severity_counts:
             severity_counts[sev] += 1
     
-    # === ШАГ 4: Проверяем порог блокировки ===
     blocked = False
     blocking_count = 0
     blocking_severity = None
     
     if fail_on_severity and fail_on_severity != 'NONE':
-        # Находим индекс порога в списке уровней
         try:
             fail_index = SEVERITY_ORDER.index(fail_on_severity.upper())
         except ValueError:
-            fail_index = SEVERITY_ORDER.index('HIGH')  # Дефолт
+            fail_index = SEVERITY_ORDER.index('HIGH')
         
-        # Считаем уязвимости на уровне порога и выше
         for i in range(fail_index, len(SEVERITY_ORDER)):
             level = SEVERITY_ORDER[i]
             blocking_count += severity_counts.get(level, 0)
@@ -80,7 +73,6 @@ def scan_image(image_path: str, fail_on_severity: str = 'HIGH') -> dict:
             blocked = True
             blocking_severity = fail_on_severity.upper()
     
-    # === ШАГ 5: Возвращаем результат ===
     return {
         'success': True,
         'vulnerabilities': vulnerabilities,

@@ -1,7 +1,4 @@
-# app/sse/broadcaster.py
 import threading
-import time
-import json
 from typing import Dict, List
 from datetime import datetime
 
@@ -30,7 +27,6 @@ class SSEBroadcaster:
     Потокобезопасный (использует Lock).
     """
     
-    # Статическое хранилище: { session_id: Queue[LogEntry] }
     _channels: Dict[str, List[LogEntry]] = {}
     _lock = threading.Lock()
     
@@ -112,5 +108,4 @@ class SSEBroadcaster:
     @classmethod
     def cleanup_old_sessions(cls, max_age_hours: int = 24):
         """Очистка старых сессий (можно вызвать по cron)"""
-        # Для простоты пока не реализуем
         pass

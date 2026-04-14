@@ -1,4 +1,4 @@
 # SPDX-License-Identifier: MIT-0
 ---
 # vars file for fail2ban_configuration
-fail2ban_configuration_preinstalled_fail2ban_filters: ['apache-auth', 'nginx-http-auth']
+fail2ban_configuration_preinstalled_filters: ['apache-auth', 'nginx-http-auth']

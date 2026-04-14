@@ -1,4 +1,3 @@
-# app/routes/deploy.py
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, Response
 import uuid
 import threading
@@ -30,32 +29,25 @@ def start_deployment():
     3. Запуск в фоне
     4. Редирект на страницу статуса
     """
-    # Быстрая проверка файлов
     if not request.files.get('ssh_key') or not request.files.get('docker_image'):
         return jsonify({"error": "Требуется загрузка SSH-ключа и Docker-образа"}), 400
     
-    # ИЗВЛЕКАЕМ ДАННЫЕ В ГЛАВНОМ ПОТОКЕ (пока контекст запроса активен)
     form_data = request.form.to_dict()
     
-    # Сохраняем файлы во временную папку СРАЗУ, чтобы поток мог их прочитать
     from libs.temp_files import save_temp_file
     file_paths = {
         'ssh_key': save_temp_file(request.files.get('ssh_key'), "ssh_key_"),
         'docker_image': save_temp_file(request.files.get('docker_image'), "docker_image_"),
     }
     
-    # Dockerfile опционально
     if request.files.get('dockerfile') and request.files['dockerfile'].filename:
         file_paths['dockerfile'] = save_temp_file(request.files['dockerfile'], "dockerfile_")
     
-    # Создаём уникальную сессию
     session_id = uuid.uuid4().hex[:12]
     
-    # Создаём сервис деплоя
     service = DeploymentService(session_id)
     active_deployments[session_id] = service
     
-    # Запускаем в фоновом потоке, передавая ДАННЫЕ, а не request объекты
     def run_in_background():
         try:
             service.execute(form_data, file_paths)
@@ -65,10 +57,9 @@ def start_deployment():
             service.logger.error(f"Critical error: {str(e)}")
     
     thread = threading.Thread(target=run_in_background)
-    thread.daemon = True  # Поток завершится при остановке приложения
+    thread.daemon = True
     thread.start()
     
-    # Редирект на страницу статуса
     return redirect(url_for('deploy.status', session_id=session_id))
 
 
@@ -91,30 +82,24 @@ def stream(session_id: str):
     def generate():
         last_index = 0
         while True:
-            # Получаем новые события
             events = SSEBroadcaster.get_events(session_id, last_index)
             
             for event in events:
-                # Формат SSE: "data: {...}\n\n"
                 yield f"data: {json.dumps(event)}\n\n" 
                 last_index += 1
             
-            # Проверяем, завершён ли деплой
             if session_id in active_deployments:
                 service = active_deployments[session_id]
                 if service.status in ['success', 'error']:
-                    # Отправляем финальное событие
                     yield f"data: {json.dumps({'type': 'finished', 'status': service.status})}\n\n"
-                    # Очищаем сессию через 5 секунд
                     time.sleep(5)
                     SSEBroadcaster.cleanup_session(session_id)
                     del active_deployments[session_id]
                     break
             else:
-                # Сессия уже удалена
                 break
             
-            time.sleep(0.5)  # Пауза между опросами
+            time.sleep(0.5)
     
     return Response(
         generate(),
@@ -122,7 +107,7 @@ def stream(session_id: str):
         headers={
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
-            'X-Accel-Buffering': 'no'  # Для Nginx
+            'X-Accel-Buffering': 'no'
         }
     )
 

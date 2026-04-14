@@ -2,9 +2,9 @@
 ---
 # defaults file for fail2ban_configuration
 fail2ban_configuration_app_log_path: /var/log/nginx/access.log
-fail2ban_configuration_app_fail2ban_filter: filter
-fail2ban_configuration_app_fail2ban_regex: "^<HOST> bad pass$" # just an example
-fail2ban_configuration_app_fail2ban_maxretry: 5
-fail2ban_configuration_app_fail2ban_bantime: 3600
-fail2ban_configuration_app_fail2ban_findtime: 600
-fail2ban_configuration_app_fail2ban_ports: 80,443
+fail2ban_configuration_app_filter: filter
+fail2ban_configuration_app_regex: "^<HOST> bad pass$" # just an example
+fail2ban_configuration_app_maxretry: 5
+fail2ban_configuration_app_bantime: 3600
+fail2ban_configuration_app_findtime: 600
+fail2ban_configuration_app_ports: 80,443

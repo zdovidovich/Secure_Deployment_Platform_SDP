@@ -32,19 +32,19 @@
                     <h3>Целевой сервер</h3>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label for="server_ip">IP адрес <span class="required">*</span></label>
-                            <input type="text" id="server_ip" name="ansible_host" placeholder="192.168.1.100" required
+                            <label for="ansible_host">IP адрес <span class="required">*</span></label>
+                            <input type="text" id="ansible_host" name="ansible_host" placeholder="192.168.1.100" required
                                 pattern="^(\d{1,3}\.){3}\d{1,3}$">
                         </div>
                         <div class="form-group">
-                            <label for="server_port">SSH порт</label>
-                            <input type="number" id="server_port" name="ansible_port" value="22" min="1" max="65535">
+                            <label for="ansible_port">SSH порт</label>
+                            <input type="number" id="ansible_port" name="ansible_port" value="22" min="1" max="65535">
                         </div>
                     </div>
                     <div class="form-grid" style="margin-top: 1rem;">
                         <div class="form-group">
-                            <label for="server_user">Пользователь <span class="required">*</span></label>
-                            <input type="text" id="server_user" name="ansible_user" placeholder="ubuntu" required>
+                            <label for="ansible_user">Пользователь <span class="required">*</span></label>
+                            <input type="text" id="ansible_user" name="ansible_user" placeholder="ubuntu" required>
                         </div>
                         <div class="form-group">
                             <label for="ssh_key">SSH ключ <span class="required">*</span></label>
@@ -63,8 +63,8 @@
                     <h3>Настройки безопасности</h3>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label for="ssh_port">Новый порт SSH</label>
-                            <input type="number" id="ssh_port" name="ssh_port" value="22" min="1" max="65535">
+                            <label for="ssh_hardening_port">Новый порт SSH</label>
+                            <input type="number" id="ssh_hardening_port" name="ssh_hardening_port" value="22" min="1" max="65535">
                             <div class="hint">Оставьте в поле текущий SSH port, чтобы не менять
                             </div>
                         </div>
@@ -72,16 +72,16 @@
                             <label>Опции</label>
                             <div class="checkbox-group">
                                 <div class="checkbox-item">
-                                    <input type="checkbox" id="enable_fail2ban" name="enable_fail2ban" checked>
-                                    <label for="enable_fail2ban">Fail2Ban для sshd</label>
+                                    <input type="checkbox" id="enable_fail2ban_for_ssh" name="enable_fail2ban_for_ssh" checked>
+                                    <label for="enable_fail2ban_for_ssh">Fail2Ban для sshd</label>
                                 </div>
                                 <div class="checkbox-item">
                                     <input type="checkbox" id="enable_selinux" name="enable_selinux" checked>
                                     <label for="enable_selinux">SELinux (RHEL)</label>
                                 </div>
                                 <div class="checkbox-item">
-                                    <input type="checkbox" id="disable_pass_sshd" name="disable_pass_sshd" checked>
-                                    <label for="disable_pass_sshd">Отключить вход по паролю для sshd</label>
+                                    <input type="checkbox" id="ssh_hardening_disable_pass" name="ssh_hardening_disable_pass" checked>
+                                    <label for="ssh_hardening_disable_pass">Отключить вход по паролю для sshd</label>
                                 </div>
                             </div>
                         </div>
@@ -109,14 +109,14 @@
                         style="display: none; margin-top: 1rem; padding: 1rem; background: var(--dark-light); border-radius: 8px; border: 1px solid var(--border);">
                         <div class="form-grid">
                             <div class="form-group">
-                                <label for="app_log_path">Путь к логу на хосте</label>
-                                <input type="text" id="app_log_path" name="app_log_path" value="/var/log/app/access.log"
+                                <label for="fail2ban_configuration_app_log_path">Путь к логу на хосте</label>
+                                <input type="text" id="fail2ban_configuration_app_log_path" name="fail2ban_configuration_app_log_path" value="/var/log/app/access.log"
                                     placeholder="/var/log/app/access.log">
                                 <div class="hint">Не забудьте примонтировть данный файл при настройке контейнера</div>
                             </div>
                             <div class="form-group">
-                                <label for="app_fail2ban_filter">Тип фильтра</label>
-                                <select id="app_fail2ban_filter" name="app_fail2ban_filter">
+                                <label for="fail2ban_configuration_app_filter">Тип фильтра</label>
+                                <select id="fail2ban_configuration_app_filter" name="fail2ban_configuration_app_filter">
                                     <option value="app-generic">Generic (401/403 ошибки)</option>
                                     <option value="nginx-http-auth">Nginx HTTP Auth</option>
                                     <option value="apache-auth">Apache Auth</option>
@@ -126,8 +126,8 @@
                         </div>
 
                         <div class="form-group" id="custom-regex-group" style="display: none; margin-top: 1rem;">
-                            <label for="app_fail2ban_regex">Failregex (для custom)</label>
-                            <textarea id="app_fail2ban_regex" name="app_fail2ban_regex"
+                            <label for="fail2ban_configuration_app_regex">Failregex (для custom)</label>
+                            <textarea id="fail2ban_configuration_app_regex" name="fail2ban_configuration_app_regex"
                                 placeholder="^.*Failed login from &lt;HOST&gt;.*$"
                                 style="font-family: monospace; font-size: 0.85rem; min-height: 60px; width: 100%;"></textarea>
                             <div class="hint">Используйте <code>&lt;HOST&gt;</code> вместо IP-адреса</div>
@@ -135,23 +135,23 @@
 
                         <div class="form-grid" style="margin-top: 1rem;">
                             <div class="form-group">
-                                <label for="app_fail2ban_maxretry">Max попытки</label>
-                                <input type="number" id="app_fail2ban_maxretry" name="app_fail2ban_maxretry" value="5"
+                                <label for="fail2ban_configuration_app_maxretry">Max попытки</label>
+                                <input type="number" id="fail2ban_configuration_app_maxretry" name="fail2ban_configuration_app_maxretry" value="5"
                                     min="1" max="20">
                             </div>
                             <div class="form-group">
-                                <label for="app_fail2ban_bantime">Бан (секунды)</label>
-                                <input type="number" id="app_fail2ban_bantime" name="app_fail2ban_bantime" value="3600"
+                                <label for="fail2ban_configuration_app_bantime">Бан (секунды)</label>
+                                <input type="number" id="fail2ban_configuration_app_bantime" name="fail2ban_configuration_app_bantime" value="3600"
                                     min="60" step="60">
                             </div>
                             <div class="form-group">
-                                <label for="app_fail2ban_findtime">Окно (секунды)</label>
-                                <input type="number" id="app_fail2ban_findtime" name="app_fail2ban_findtime" value="600"
+                                <label for="fail2ban_configuration_app_findtime">Окно (секунды)</label>
+                                <input type="number" id="fail2ban_configuration_app_findtime" name="fail2ban_configuration_app_findtime" value="600"
                                     min="60" step="60">
                             </div>
                             <div class="form-group">
-                                <label for="app_fail2ban_ports">Порты для защиты</label>
-                                <input type="text" id="app_fail2ban_ports" name="app_fail2ban_ports" placeholder="80,443"
+                                <label for="fail2ban_configuration_app_ports">Порты для защиты</label>
+                                <input type="text" id="fail2ban_configuration_app_ports" name="fail2ban_configuration_app_ports" placeholder="80,443"
                                     value="">
                                 <div class="hint">
                                     Оставьте пустым для использования порта приложения (порта хоста, настраиваемого ниже) .<br>
@@ -222,13 +222,13 @@
 
                     <div class="form-grid">
                         <div class="form-group">
-                            <label for="container_name">Имя контейнера <span class="required">*</span></label>
-                            <input type="text" id="container_name" name="app_container_name" placeholder="myapp"
+                            <label for="app_deploy_container_name">Имя контейнера <span class="required">*</span></label>
+                            <input type="text" id="app_deploy_container_name" name="app_deploy_container_name" placeholder="myapp"
                                 required pattern="^[a-zA-Z0-9][a-zA-Z0-9_.-]*$">
                         </div>
                         <div class="form-group">
-                            <label for="image_name">Имя образа <span class="required">*</span></label>
-                            <input type="text" id="image_name" name="app_image_name" placeholder="myapp:latest"
+                            <label for="app_deploy_image_name">Имя образа <span class="required">*</span></label>
+                            <input type="text" id="app_deploy_image_name" name="app_deploy_image_name" placeholder="myapp:latest"
                                 required>
                         </div>
                     </div>
@@ -248,13 +248,13 @@
 
                     <div class="form-grid" style="margin-top: 1rem;">
                         <div class="form-group">
-                            <label for="app_cpus">CPU limit (ядра)</label>
-                            <input type="number" id="app_cpus" name="app_cpus" min="0" step="0.5" placeholder="1.5">
+                            <label for="app_deploy_cpus">CPU limit (ядра)</label>
+                            <input type="number" id="app_deploy_cpus" name="app_deploy_cpus" min="0" step="0.5" placeholder="1.5">
                             <div class="hint">Пустое поле = без ограничений, 0.5 = пол-ядра, 2 = два ядра</div>
                         </div>
                         <div class="form-group">
-                            <label for="app_memory">Memory limit</label>
-                            <input type="text" id="app_memory" name="app_memory" placeholder="512M"
+                            <label for="app_deploy_memory">Memory limit</label>
+                            <input type="text" id="app_deploy_memory" name="app_deploy_memory" placeholder="512M"
                                 pattern="^\d+[BKMGTP]?$">
                             <div class="hint">Формат: <code>число+единица</code> (например: <code>256M</code>,
                                 <code>1G</code>). Доступные единицы: B, K, M, G, T, P 
@@ -264,14 +264,14 @@
 
                     <div class="form-group full-width" style="margin-top: 1rem;">
                         <label for="volumes">Volumes (опционально)</label>
-                        <textarea id="volumes" name="app_volumes"
+                        <textarea id="volumes" name="app_deploy_volumes"
                             placeholder="/host/path:/container/path&#10;/data:/app/data"></textarea>
                         <div class="hint">Формат: <code>хост:контейнер</code>, каждый с новой строки</div>
                     </div>
 
                     <div class="form-group full-width">
                         <label for="env_vars">ENV переменные (опционально)</label>
-                        <textarea id="env_vars" name="app_envs"
+                        <textarea id="env_vars" name="app_deploy_envs"
                             placeholder="KEY=value&#10;DATABASE_URL=postgres://..."></textarea>
                         <div class="hint">Формат: <code>KEY=value</code>, каждый с новой строки</div>
                     </div>
@@ -281,8 +281,8 @@
                         <label>Опции контейнера</label>
                         <div class="checkbox-group">
                             <div class="checkbox-item">
-                                <input type="checkbox" id="app_ro_fs" name="app_ro_fs">
-                                <label for="app_ro_fs">Read-only файловая система</label>
+                                <input type="checkbox" id="app_deploy_ro_fs" name="app_deploy_ro_fs">
+                                <label for="app_deploy_ro_fs">Read-only файловая система</label>
                             </div>
                         </div>
                     </div>
@@ -340,7 +340,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const containerFail2banCheckbox = document.getElementById('enable_container_fail2ban');
             const containerFail2banOptions = document.getElementById('container-fail2ban-options');
-            const fail2banFilterSelect = document.getElementById('app_fail2ban_filter');
+            const fail2banFilterSelect = document.getElementById('fail2ban_configuration_app_filter');
             const customRegexGroup = document.getElementById('custom-regex-group');
 
             if (containerFail2banCheckbox) {

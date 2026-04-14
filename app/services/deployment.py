@@ -1,10 +1,5 @@
-# app/services/deployment.py
-import os
-import threading
 from typing import Dict, Optional
-from werkzeug.utils import secure_filename
-
-from libs.temp_files import save_temp_file, create_inventory_temp_file, cleanup_temp_files
+from libs.temp_files import create_inventory_temp_file, cleanup_temp_files
 from libs.validation import validate_all_data
 from libs.hadolint import scan_dockerfile, format_hadolint_result
 from libs.trivy import scan_image, format_trivy_result
@@ -37,13 +32,11 @@ class DeploymentService:
             self.status = "running"
             self.logger.info("Запуск процесса деплоя...")
 
-            # === ШАГ 1: Файлы уже сохранены, используем пути ===
             self.logger.info("Загруженные файлы готовы")
             ssh_key_path = file_paths.get('ssh_key')
             image_path = file_paths.get('docker_image')
             dockerfile_path = file_paths.get('dockerfile')
 
-            # === ШАГ 2: Валидация ===
             self.logger.info("Проверка корректности данных...")
             is_valid, errors, validated_data = validate_all_data(
                 form_data, image_path, ssh_key_path
@@ -55,7 +48,6 @@ class DeploymentService:
                 self.logger.error(f"Валидация не пройдена: {errors}")
                 return self.result
 
-            # === ШАГ 3: Hadolint (если есть Dockerfile) ===
             if dockerfile_path:
                 self.logger.info("Проверка Dockerfile (Hadolint)...")
                 hadolint_result = scan_dockerfile(dockerfile_path)
@@ -78,7 +70,6 @@ class DeploymentService:
                         f"Hadolint ошибка: {hadolint_result['error']}")
                     return self.result
 
-            # === ШАГ 4: Trivy ===
             if form_data.get('enable_trivy') == "on":
                 trivy_fail_on = form_data.get('trivy_fail_on', 'HIGH')
                 self.logger.info(
@@ -120,7 +111,6 @@ class DeploymentService:
                     f"MEDIUM={counts.get('MEDIUM', 0)}, LOW={counts.get('LOW', 0)}"
                 )
 
-            # === ШАГ 5: Ansible Inventory ===
             self.logger.info("Подготовка Ansible inventory...")
             inventory_path = create_inventory_temp_file({
                 'ansible_host': validated_data['ansible_host'],
@@ -128,44 +118,41 @@ class DeploymentService:
                 'ansible_user': validated_data['ansible_user']
             }, ssh_key_path)
 
-            # === ШАГ 6: Ansible Playbook ===
             self.logger.info("Запуск Ansible playbook...")
             extra_vars = {
-                'ssh_port': validated_data.get('ssh_port', validated_data['ansible_port']),
-                'app_image_path': image_path,
-                'selinux_state': "enforcing" if form_data.get('enable_selinux') == 'on' else "disabled",
-                'ssh_fail2ban_state': form_data.get('enable_fail2ban') == 'on',
-                'disable_pass_sshd': form_data.get('disable_pass_sshd') == 'on',
-                'app_image_name': validated_data['app_image_name'],
-                'app_container_name': validated_data['app_container_name'],
-                'app_ports': [f"{validated_data['app_host_port']}:{validated_data['app_container_port']}"],
-                'app_volumes': validated_data['app_volumes'],
-                'app_envs': validated_data['app_envs'],
-                'app_ro_fs': form_data.get('app_ro_fs') == 'on',
-                'app_cpus': validated_data.get('app_cpus', None),
-                'app_memory': validated_data.get('app_memory', None),
+                'ssh_hardening_port': validated_data.get('ssh_hardening_port', validated_data['ansible_port']),
+                'ssh_fail2ban_configuration_port': validated_data.get('ssh_hardening_port', validated_data['ansible_port']),
+                'app_deploy_image_path': image_path,
+                'selinux_configuration_state': "enforcing" if form_data.get('enable_selinux') == 'on' else "disabled",
+                'ssh_fail2ban_state': form_data.get('enable_fail2ban_for_ssh') == 'on',
+                'ssh_hardening_disable_pass': form_data.get('ssh_hardening_disable_pass') == 'on',
+                'app_deploy_image_name': validated_data['app_deploy_image_name'],
+                'app_deploy_container_name': validated_data['app_deploy_container_name'],
+                'app_deploy_ports': [f"{validated_data['app_host_port']}:{validated_data['app_container_port']}"],
+                'app_deploy_volumes': validated_data['app_deploy_volumes'],
+                'app_deploy_envs': validated_data['app_deploy_envs'],
+                'app_deploy_ro_fs': form_data.get('app_deploy_ro_fs') == 'on',
+                'app_deploy_cpus': validated_data.get('app_deploy_cpus', None),
+                'app_deploy_memory': validated_data.get('app_deploy_memory', None),
                 'enable_container_fail2ban': form_data.get("enable_container_fail2ban") == "on",
-                'app_log_path': validated_data.get('app_log_path', '/var/log/app/access.log'),
-                'app_fail2ban_filter': validated_data.get('app_fail2ban_filter', 'app-generic'),
-                'app_fail2ban_regex': validated_data.get('app_fail2ban_regex', ''),
-                'app_fail2ban_maxretry': validated_data.get("app_fail2ban_maxretry", 5),
-                'app_fail2ban_bantime': validated_data.get("app_fail2ban_bantime", 86400),
-                'app_fail2ban_findtime': validated_data.get('app_fail2ban_findtime', 7200),
-                'app_fail2ban_ports': validated_data.get("app_fail2ban_ports", validated_data['app_host_port'])
+                'fail2ban_configuration_app_log_path': validated_data.get('fail2ban_configuration_app_log_path', '/var/log/app/access.log'),
+                'fail2ban_configuration_app_filter': validated_data.get('fail2ban_configuration_app_filter', 'app-generic'),
+                'fail2ban_configuration_app_regex': validated_data.get('fail2ban_configuration_app_regex', ''),
+                'fail2ban_configuration_app_maxretry': validated_data.get("fail2ban_configuration_app_maxretry", 5),
+                'fail2ban_configuration_app_bantime': validated_data.get("fail2ban_configuration_app_bantime", 86400),
+                'fail2ban_configuration_app_findtime': validated_data.get('fail2ban_configuration_app_findtime', 7200),
+                'fail2ban_configuration_app_ports': validated_data.get("fail2ban_configuration_app_ports", validated_data['app_host_port'])
             }
             
             ansible_result = run_full_configuring(extra_vars, inventory_path)
 
-            # Парсим логи Ansible и отправляем в SSE
             for line in ansible_result.stdout.read().split('\n'):
                 if line.strip():
                     self.logger.ansible(line)
 
-            # === ШАГ 7: Очистка ===
             self.logger.info("Очистка временных файлов...")
             cleanup_temp_files()
 
-            # === ШАГ 8: Финальный статус ===
 
             if ansible_result.status != "successful":
                 self.status = "error"

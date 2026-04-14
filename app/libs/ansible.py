@@ -1,5 +1,4 @@
 import ansible_runner
-import json
 import os
 from libs.utils import get_project_root
 
