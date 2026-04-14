@@ -1,36 +1,37 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # tasks file for selinux_configuration
-- block:
-  - name: Validate port
-    assert:
-      that: 
-      - item.port >= 0
-      - item.port <= 65535
-      fail_msg: "Port is not valid"
-    loop: "{{ selinux_rules }}"
-    
-  - name: Install necessary library for python-selinux
-    yum:
-      name: policycoreutils-python-utils
-      state: present      
-
-  - name: Reminder for user
-    debug: 
-      msg: SELinux was disabled. The configure was saved, but ports politics weren't applied. Reboot your server and run this configuration again, to apply politics.
-    when: ansible_facts.selinux.status == "disabled" and selinux_state != "disabled"
-
-  - name: Set SELinux mode
-    selinux:
-      state: "{{ selinux_state }}"
-      policy: targeted
-    
-  - name: "Open port for selinux type" 
-    seport:
-      ports: "{{ item.port }}"
-      proto: tcp
-      setype: "{{ item.type }}"
-    loop: "{{ selinux_rules }}"
-    when: selinux_state != 'disabled' and ansible_facts.selinux.status != "disabled"
-
+- name: Configure selinux for RHEL-based systems
   when: ansible_facts.os_family == "RedHat"
+  block:
+    - name: Validate port
+      ansible.builtin.assert:
+        that:
+          - item.port >= 0
+          - item.port <= 65535
+        fail_msg: "Port is not valid"
+      loop: "{{ selinux_configuration_rules }}"
+
+    - name: Install necessary library for python-selinux
+      ansible.builtin.dnf:
+        name: policycoreutils-python-utils
+        state: present
+
+    - name: Reminder for user
+      ansible.builtin.debug:
+        msg: SELinux was disabled. The configure was saved, but ports politics weren't applied. \
+         Reboot your server and run this configuration again, to apply politics.
+      when: ansible_facts.selinux.status == "disabled" and selinux_configuration_state != "disabled"
+
+    - name: Set SELinux mode
+      community.general.selinux:
+        state: "{{ selinux_configuration_state }}"
+        policy: targeted
+
+    - name: "Open port for selinux type"
+      community.general.seport:
+        ports: "{{ item.port }}"
+        proto: tcp
+        setype: "{{ item.type }}"
+      loop: "{{ selinux_configuration_rules }}"
+      when: selinux_state != 'disabled' and ansible_facts.selinux.status != "disabled"

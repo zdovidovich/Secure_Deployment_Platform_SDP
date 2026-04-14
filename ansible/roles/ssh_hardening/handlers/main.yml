@@ -1,7 +1,7 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # handlers file for ssh_hardening
 - name: Restart sshd
-  service: 
-    name: "{{'ssh' if ansible_facts.distribution in ['Ubuntu'] else 'sshd'}}"
+  ansible.builtin.service:
+    name: "{{ 'ssh' if ansible_facts.distribution in ['Ubuntu'] else 'sshd' }}"
     state: restarted

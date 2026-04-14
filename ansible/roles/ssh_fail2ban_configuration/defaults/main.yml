@@ -1,5 +1,5 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # defaults file for ssh_fail2ban_configuration
-ssh_port: 22
-log_ssh_path: /var/log/auth.log
+ssh_fail2ban_configuration_port: 22
+ssh_fail2ban_configuration_log_path: /var/log/auth.log

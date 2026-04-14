@@ -1,59 +1,63 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # tasks file for app_deploy
-- block:
-  - name: Install pip and necessary libraries (RHEL-based systems)
-    yum: 
-      name: "{{ item }}"
-      state: present
-    loop:
-      - python3-pip
-      - python3-requests
-    when: ansible_facts.os_family == "RedHat"
+- name: Deploy docker container
+  block:
+    - name: Install pip and necessary libraries (RHEL-based systems)
+      ansible.builtin.dnf:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - python3-pip
+        - python3-requests
+      when: ansible_facts.os_family == "RedHat"
 
-  - name: Install pip and necessary libraries (Debian-based systems)
-    apt: 
-      name: "{{ item }}"
-      state: present
-    loop:
-      - python3-pip
-      - python3-requests
-    when: ansible_facts.os_family == "Debian"
+    - name: Install pip and necessary libraries (Debian-based systems)
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - python3-pip
+        - python3-requests
+      when: ansible_facts.os_family == "Debian"
 
-  - name: Check parameters 
-    assert:
-      that: 
-        - app_image_name != ""
-        - app_image_path != ""
-        - app_container_name != ""
-      fail_msg: Not enough given parameters to start role 
-      success_msg: Parameters are good
+    - name: Check parameters
+      ansible.builtin.assert:
+        that:
+          - app_deploy_image_name != ""
+          - app_deploy_image_path != ""
+          - app_deploy_container_name != ""
+        fail_msg: Not enough given parameters to start role
+        success_msg: Parameters are good
 
-  - name: Copy image archive to host
-    copy:
-      src: "{{ app_image_path }}"
-      dest: "/tmp/{{ app_container_name }}__{{ now(utc=true,fmt='%Y-%m-%d__%H:%M:%S') }}"
-    register: result_copying
-      
-  - name: Load image archive to docker
-    community.docker.docker_image_load:
-      path: "{{ result_copying.dest }}"
-    async: 3600
-    poll: 20
+    - name: Copy image archive to host
+      ansible.builtin.copy:
+        src: "{{ app_image_path }}"
+        dest: "/tmp/{{ app_deploy_container_name }}__{{ now(utc=true, fmt='%Y-%m-%d__%H:%M:%S') }}"
+        owner: root
+        group: root
+        mode: "0700"
+      register: app_deploy_result_copying
 
-  - name: Start container
-    docker_container:
-      name: "{{ app_container_name }}"
-      image: "{{ app_image_name }}" 
-      ports: "{{ app_ports }}"
-      env: "{{ app_envs }}"
-      volumes: "{{ app_volumes }}"
-      read_only: "{{ app_ro_fs }}"
-      cpus: "{{ app_cpus }}"
-      memory: "{{ app_memory }}"
+    - name: Load image archive to docker
+      community.docker.docker_image_load:
+        path: "{{ app_deploy_result_copying.dest }}"
+      async: 3600
+      poll: 20
+
+    - name: Start container
+      docker_container:
+        name: "{{ app_deploy_container_name }}"
+        image: "{{ app_deploy_image_name }}"
+        ports: "{{ app_deploy_ports }}"
+        env: "{{ app_deploy_envs }}"
+        volumes: "{{ app_deploy_volumes }}"
+        read_only: "{{ app_deploy_ro_fs }}"
+        cpus: "{{ app_deploy_cpus }}"
+        memory: "{{ app_deploy_memory }}"
 
   always:
-  - name: Delete image tar archive
-    file: 
-      path: "{{ result_copying.dest }}"
-      state: absent
+    - name: Delete image tar archive
+      ansible.builtin.file:
+        path: "{{ app_deploy_result_copying.dest }}"
+        state: absent

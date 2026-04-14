@@ -5,9 +5,9 @@ ignoreip = 127.0.0.1/8, ::1
 
 [sshd]
 enabled = true
-port    = {{ ssh_port }}
+port    = {{ ssh_fail2ban_configuration_port }}
 filter = sshd
-logpath = {{ log_ssh_path }}
+logpath = {{ ssh_fail2ban_configuration_log_path }}
 maxretry = 3
 action = %(action_)s
 

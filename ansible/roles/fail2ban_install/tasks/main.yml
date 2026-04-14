@@ -1,31 +1,29 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # tasks file for fail2ban_install
 - name: Install fail2ban (Debian-based systems)
-  apt:
+  ansible.builtin.apt:
     name: fail2ban
     state: present
   when: ansible_facts.os_family == "Debian"
 
 - name: Install fail2ban (RHEL-based systems)
-  dnf:
+  ansible.builtin.dnf:
     name: fail2ban
     state: present
   when: ansible_facts.os_family == "RedHat"
 
 - name: Enable fail2ban
-  service:
+  ansible.builtin.service:
     name: fail2ban
     state: started
-    enabled: true 
+    enabled: true
 
 - name: Create local jail
-  copy:
+  ansible.builtin.copy:
     content: ''
     dest: /etc/fail2ban/jail.local
-    force: no
-    mode: 0644
+    force: false
+    mode: "0644"
     owner: root
     group: root
-
-    
