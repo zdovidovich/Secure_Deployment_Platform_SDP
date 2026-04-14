@@ -63,7 +63,7 @@ def cleanup_temp_files(prefixes=('ssh_key_', 'docker_image_', 'dockerfile_', 'in
                 os.remove(file_path)
             except OSError:
                 pass  
-    for file_path in glob.glob(os.path.join(os.path.join(get_base_dir_ansible(), 'inventory'), f'inventory_*')):
+    for file_path in glob.glob(os.path.join(os.path.join(get_base_dir_ansible(), 'inventory'), 'inventory_*')):
         try:
             os.remove(file_path)
         except OSError:
