@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ошибка</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 100px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .error-box {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid #f5c6cb;
+        }
+        h1 { margin-top: 0; }
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="error-box">
+        <h1>⚠️ Произошла ошибка</h1>
+        <p>{{ error }}</p>
+        <p><a href="/deploy">← Вернуться к форме деплоя</a></p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Deployment Platform</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 { color: #333; }
+        p { color: #666; margin: 20px 0; }
+        .btn {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 15px 40px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 18px;
+            margin: 10px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn-secondary {
+            background: #6c757d;
+        }
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        .features {
+            text-align: left;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+        .features li {
+            padding: 8px 0;
+        }
+        .features li:before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Secure Deployment Platform</h1>
+        <p>Безопасное развёртывание приложений с автоматическим сканированием уязвимостей и настройкой безопасности</p>
+        
+        <div>
+            <a href="/deploy" class="btn">Новый деплой</a>
+            <a href="/deployments" class="btn btn-secondary">История деплоев</a>
+        </div>
+        
+        <div class="features">
+            <h3>Возможности платформы:</h3>
+            <ul>
+                <li>Сканирование Docker образов через Trivy</li>
+                <li>Анализ Dockerfile через Hadolint</li>
+                <li>Автоматизированное развёртывание через Ansible</li>
+                <li>Настройка SELinux, Fail2ban, SSH hardening</li>
+                <li>Real-time логи через Server-Sent Events</li>
+                <li>REST API для интеграции</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

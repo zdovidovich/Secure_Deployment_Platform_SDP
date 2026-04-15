@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статус деплоя - {{ deployment.id }}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .status {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-pending { background: #ffeeba; color: #856404; }
+        .status-running { background: #b8daff; color: #004085; }
+        .status-success { background: #d4edda; color: #155724; }
+        .status-error { background: #f8d7da; color: #721c24; }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .info-item label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+        .info-item div {
+            font-size: 16px;
+            color: #333;
+        }
+        .console {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            line-height: 1.5;
+        }
+        .log-info { color: #4ec9b0; }
+        .log-warning { color: #ce9178; }
+        .log-error { color: #f48771; }
+        .log-debug { color: #808080; }
+        .timestamp {
+            color: #569cd6;
+            margin-right: 10px;
+        }
+        .source {
+            color: #c586c0;
+            margin-right: 10px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #007bff;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Статус деплоя</h1>
+        
+        <p>
+            ID: <strong>{{ deployment.id }}</strong><br>
+            Статус: <span class="status status-{{ deployment.status }}">{{ deployment.status }}</span>
+        </p>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <label>Хост</label>
+                <div>{{ deployment.ansible_host }}</div>
+            </div>
+            <div class="info-item">
+                <label>Порт SSH</label>
+                <div>{{ deployment.ansible_port }}</div>
+            </div>
+            <div class="info-item">
+                <label>Пользователь</label>
+                <div>{{ deployment.ansible_user }}</div>
+            </div>
+            <div class="info-item">
+                <label>Образ</label>
+                <div>{{ deployment.app_deploy_image_name }}</div>
+            </div>
+            <div class="info-item">
+                <label>Контейнер</label>
+                <div>{{ deployment.app_deploy_container_name }}</div>
+            </div>
+            <div class="info-item">
+                <label>Порты</label>
+                <div>{{ deployment.app_host_port }} → {{ deployment.app_container_port }}</div>
+            </div>
+        </div>
+        
+        {% if deployment.error_message %}
+        <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; margin: 20px 0;">
+            <strong>Ошибка:</strong> {{ deployment.error_message }}
+        </div>
+        {% endif %}
+        
+        <h2>📋 Логи в реальном времени</h2>
+        <div class="console" id="console"></div>
+        
+        <a href="/deploy" class="back-link">← Вернуться к форме</a>
+    </div>
+    
+    <script>
+        const deploymentId = "{{ deployment.id }}";
+        const consoleDiv = document.getElementById('console');
+        let lastLogIndex = 0;
+        
+        function appendLog(log) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            const time = new Date(log.timestamp).toLocaleTimeString();
+            const sourceClass = log.source || 'deployment';
+            
+            entry.innerHTML = `
+                <span class="timestamp">[${time}]</span>
+                <span class="source">[${sourceClass}]</span>
+                <span class="log-${log.level}">${escapeHtml(log.message)}</span>
+            `;
+            
+            consoleDiv.appendChild(entry);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // SSE подключение
+        const eventSource = new EventSource(`/api/v1/deployments/${deploymentId}/stream`);
+        
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'finished') {
+                eventSource.close();
+                appendLog({
+                    timestamp: new Date().toISOString(),
+                    level: 'info',
+                    message: `Деплой завершён со статусом: ${data.status}`,
+                    source: 'system'
+                });
+                
+                // Обновление статуса страницы
+                setTimeout(() => location.reload(), 2000);
+                return;
+            }
+            
+            if (data.error) {
+                appendLog({
+                    timestamp: new Date().toISOString(),
+                    level: 'error',
+                    message: data.error,
+                    source: 'system'
+                });
+                return;
+            }
+            
+            appendLog(data);
+        };
+        
+        eventSource.onerror = () => {
+            appendLog({
+                timestamp: new Date().toISOString(),
+                level: 'warning',
+                message: 'Потеряно соединение с сервером. Попытка переподключения...',
+                source: 'system'
+            });
+        };
+        
+        // Начальная загрузка логов
+        fetch(`/api/v1/deployments/${deploymentId}/logs`)
+            .then(r => r.json())
+            .then(data => {
+                data.logs.forEach(log => appendLog(log));
+            })
+            .catch(console.error);
+    </script>
+</body>
+</html>

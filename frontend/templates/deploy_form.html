@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Deployment Platform</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        input[type="text"], input[type="number"], input[type="file"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .section-title {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Secure Deployment Platform</h1>
+        
+        <form action="/deploy" method="POST" enctype="multipart/form-data">
+            
+            <div class="section">
+                <div class="section-title">📡 Подключение к серверу</div>
+                
+                <div class="form-group">
+                    <label for="ansible_host">Хост сервера *</label>
+                    <input type="text" id="ansible_host" name="ansible_host" required placeholder="192.168.1.100">
+                </div>
+                
+                <div class="two-columns">
+                    <div class="form-group">
+                        <label for="ansible_port">SSH порт</label>
+                        <input type="number" id="ansible_port" name="ansible_port" value="22" min="1" max="65535">
+                    </div>
+                    <div class="form-group">
+                        <label for="ansible_user">Пользователь SSH *</label>
+                        <input type="text" id="ansible_user" name="ansible_user" required placeholder="root">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ssh_key">SSH ключ (private key) *</label>
+                    <input type="file" id="ssh_key" name="ssh_key" accept=".pem,.key,*" required>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">🐳 Docker приложение</div>
+                
+                <div class="two-columns">
+                    <div class="form-group">
+                        <label for="app_deploy_image_name">Имя образа *</label>
+                        <input type="text" id="app_deploy_image_name" name="app_deploy_image_name" required placeholder="myapp">
+                    </div>
+                    <div class="form-group">
+                        <label for="app_deploy_container_name">Имя контейнера *</label>
+                        <input type="text" id="app_deploy_container_name" name="app_deploy_container_name" required placeholder="myapp-container">
+                    </div>
+                </div>
+                
+                <div class="two-columns">
+                    <div class="form-group">
+                        <label for="app_host_port">Порт на хосте *</label>
+                        <input type="number" id="app_host_port" name="app_host_port" required placeholder="8080">
+                    </div>
+                    <div class="form-group">
+                        <label for="app_container_port">Порт в контейнере *</label>
+                        <input type="number" id="app_container_port" name="app_container_port" required placeholder="80">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="docker_image">Docker образ (.tar файл) *</label>
+                    <input type="file" id="docker_image" name="docker_image" accept=".tar,*" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="dockerfile">Dockerfile (для сканирования)</label>
+                    <input type="file" id="dockerfile" name="dockerfile" accept="Dockerfile,*">
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">🔒 Настройки безопасности</div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="enable_trivy" name="enable_trivy" checked>
+                    <label for="enable_trivy">Сканировать образ через Trivy</label>
+                </div>
+                
+                <div class="form-group" style="margin-left: 25px;">
+                    <label for="trivy_fail_on">Порог блокировки Trivy</label>
+                    <select id="trivy_fail_on" name="trivy_fail_on">
+                        <option value="CRITICAL">CRITICAL</option>
+                        <option value="HIGH" selected>HIGH</option>
+                        <option value="MEDIUM">MEDIUM</option>
+                        <option value="LOW">LOW</option>
+                        <option value="NONE">Не блокировать</option>
+                    </select>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="enable_selinux" name="enable_selinux">
+                    <label for="enable_selinux">Включить SELinux</label>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="enable_fail2ban_for_ssh" name="enable_fail2ban_for_ssh" checked>
+                    <label for="enable_fail2ban_for_ssh">Fail2ban для SSH</label>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="ssh_hardening_disable_pass" name="ssh_hardening_disable_pass">
+                    <label for="ssh_hardening_disable_pass">Отключить парольную аутентификацию SSH</label>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="app_deploy_ro_fs" name="app_deploy_ro_fs">
+                    <label for="app_deploy_ro_fs">Read-only файловая система для контейнера</label>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="enable_container_fail2ban" name="enable_container_fail2ban">
+                    <label for="enable_container_fail2ban">Fail2ban для приложения</label>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <button type="submit">🚀 Запустить деплой</button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
