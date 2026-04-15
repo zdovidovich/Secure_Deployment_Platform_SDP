@@ -25,7 +25,7 @@
             <h1>Secure <span class="gold">Deployment</span> Platform</h1>
         </header>
 
-        <form action="/deploy/" method="POST" enctype="multipart/form-data" id="deployForm">
+        <form action="/api/v1/deployments" method="POST" enctype="multipart/form-data" id="deployForm">
             <div class="form-card">
 
                 <div class="form-section">
@@ -311,10 +311,31 @@
         setupFileInput('docker_image', 'docker_image_name');
         setupFileInput('dockerfile', 'dockerfile_name');
 
-        document.getElementById('deployForm').addEventListener('submit', function (e) {
+        document.getElementById('deployForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
             const btn = this.querySelector('button[type="submit"]');
             btn.disabled = true;
             btn.innerHTML = 'Выполняется...';
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    body: new FormData(this)
+                });
+
+                const payload = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(payload.error || 'Deployment request failed');
+                }
+
+                window.location.href = payload.web_url;
+            } catch (error) {
+                alert(error.message || 'Не удалось запустить деплой');
+                btn.disabled = false;
+                btn.innerHTML = 'Р—Р°РїСѓСЃС‚РёС‚СЊ СЂР°Р·РІС‘СЂС‚С‹РІР°РЅРёРµ';
+            }
         });
 
         function updateTrivyThresholdVisibility() {

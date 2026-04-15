@@ -68,5 +68,15 @@ def cleanup_temp_files(prefixes=('ssh_key_', 'docker_image_', 'dockerfile_', 'in
             os.remove(file_path)
         except OSError:
             pass  
+
+
+def cleanup_specific_files(file_paths: dict):
+    for file_path in file_paths.values():
+        if not file_path:
+            continue
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
     
     

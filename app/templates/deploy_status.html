@@ -81,8 +81,8 @@
 
     <script>
         const sessionId = "{{ session_id }}";
-        const streamUrl = `/deploy/stream/${sessionId}`;
-        const statusUrl = `/deploy/api/status/${sessionId}`;
+        const streamUrl = `/api/v1/deployments/${sessionId}/events`;
+        const statusUrl = `/api/v1/deployments/${sessionId}`;
         
         let eventSource = null;
         let consoleBuffer = [];
@@ -91,8 +91,23 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             connectSSE();
+            loadInitialStatus();
             updateProgress();
         });
+
+        async function loadInitialStatus() {
+            try {
+                const response = await fetch(statusUrl);
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json();
+                updateStatus(data.status);
+            } catch (e) {
+                console.error('РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё СЃС‚Р°С‚СѓСЃР°:', e);
+            }
+        }
 
         function connectSSE() {
             if (eventSource) {
