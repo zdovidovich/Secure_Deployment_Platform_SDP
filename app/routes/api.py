@@ -27,7 +27,9 @@ def _check_api_key():
 def _build_file_paths():
     file_paths = {
         "ssh_key": save_temp_file(request.files.get("ssh_key"), "ssh_key_"),
-        "docker_image": save_temp_file(request.files.get("docker_image"), "docker_image_"),
+        "docker_image": save_temp_file(
+            request.files.get("docker_image"), "docker_image_"
+        ),
     }
 
     if request.files.get("dockerfile") and request.files["dockerfile"].filename:

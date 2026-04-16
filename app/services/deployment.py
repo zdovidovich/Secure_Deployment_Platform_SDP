@@ -63,9 +63,7 @@ class DeploymentService:
                             "error": "Hadolint found errors",
                             "details": formatted,
                         }
-                        self.logger.error(
-                            "Hadolint обнаружил критические ошибки"
-                        )
+                        self.logger.error("Hadolint обнаружил критические ошибки")
                         return self.result
                 else:
                     self.status = "error"
@@ -73,9 +71,7 @@ class DeploymentService:
                         "error": "Hadolint scan failed",
                         "details": hadolint_result["error"],
                     }
-                    self.logger.error(
-                        f"Hadolint ошибка: {hadolint_result['error']}"
-                    )
+                    self.logger.error(f"Hadolint ошибка: {hadolint_result['error']}")
                     return self.result
 
             if form_data.get("enable_trivy") == "on":
@@ -139,14 +135,18 @@ class DeploymentService:
                 ),
                 "app_deploy_image_path": image_path,
                 "selinux_configuration_state": (
-                    "enforcing" if form_data.get("enable_selinux") == "on" else "disabled"
+                    "enforcing"
+                    if form_data.get("enable_selinux") == "on"
+                    else "disabled"
                 ),
                 "ssh_fail2ban_state": form_data.get("enable_fail2ban_for_ssh") == "on",
                 "ssh_hardening_disable_pass": (
                     form_data.get("ssh_hardening_disable_pass") == "on"
                 ),
                 "app_deploy_image_name": validated_data["app_deploy_image_name"],
-                "app_deploy_container_name": validated_data["app_deploy_container_name"],
+                "app_deploy_container_name": validated_data[
+                    "app_deploy_container_name"
+                ],
                 "app_deploy_ports": [
                     f"{validated_data['app_host_port']}:{validated_data['app_container_port']}"
                 ],
