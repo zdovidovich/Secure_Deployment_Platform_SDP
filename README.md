@@ -1,6 +1,17 @@
 # SDP (Secure Deployment Platform)
 
-### Verified working on distros:
+## Why do you need it?
+
+SDP (Secure Deployment Platform) is a platform for automated Docker containers deployment with security practices. 
+
+Key features:
+- Secure infrastructure: Automatic configuration of SSH, Firewall, Fail2Ban, and SELinux on the target host.
+- Vulnerability checking: Docker image scanning via Trivy and Dockerfile static analysis via Hadolint.
+- Full automation: Docker Engine installation and container deployment with configurable parameters (ports, volumes, environment variables, resource limits).
+
+Result: Your application runs in a secure environment without the need for in-depth knowledge of Linux administration.
+
+## Verified working on distros:
 
 - Ubuntu (Ubuntu Server 24.04.4 LTS)
 - Debian (12)
@@ -8,7 +19,7 @@
 - CentOS (10)
 - Fedora (Fedora Server 43)
 
-### Requirements
+## Requirements
 
 1. Master Node 
 
