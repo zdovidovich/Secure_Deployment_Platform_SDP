@@ -1,40 +1,40 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # tasks file for ssh_fail2ban_configuration
 - name: Validate port
-  assert:
-    that: 
-    - ssh_port >= 0
-    - ssh_port <= 65535
+  ansible.builtin.assert:
+    that:
+      - ssh_fail2ban_configuration_port >= 0
+      - ssh_fail2ban_configuration_port <= 65535
     fail_msg: "SSH port is not valid"
 
 - name: Install fail2ban
-  include_role: 
+  ansible.builtin.include_role:
     name: fail2ban_install
 
 - name: Generate and copy jail.local
-  template: 
+  ansible.builtin.template:
     src: jail.local.j2
     dest: /etc/fail2ban/jail.local
-    mode: 0644
+    mode: "0644"
     owner: root
     group: root
   notify: Restart fail2ban
 
 - name: Create log file for ssh
-  copy:
+  ansible.builtin.copy:
     content: ''
-    dest: "{{ log_ssh_path }}"
-    mode: 0644
+    dest: "{{ ssh_fail2ban_configuration_log_path }}"
+    mode: "0644"
     owner: root
     group: root
-    force: no
+    force: false
 
 - name: Create log file for fail2ban
-  copy:
+  ansible.builtin.copy:
     content: ''
     dest: /var/log/fail2ban.log
-    mode: 0644
+    mode: "0644"
     owner: root
     group: root
-    force: no
+    force: false

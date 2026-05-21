@@ -1,86 +1,89 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # tasks file for ssh_hardening
-- block:
-  - name: Validate port
-    assert:
-      that: 
-      - ssh_port >= 0
-      - ssh_port <= 65535
-      fail_msg: "SSH port is not valid"
+- name: Start sshd hardening
+  block:
+    - name: Validate port
+      ansible.builtin.assert:
+        that:
+          - ssh_hardening_port >= 0
+          - ssh_hardening_port <= 65535
+        fail_msg: "SSH port is not valid"
 
-  - name: Warning for ssh_port
-    debug:
-      msg: "Given port is system port. Use with caution"
-    when: ssh_port < 1024 and ssh_port != 22
-    
+    - name: Warning for ssh_port
+      ansible.builtin.debug:
+        msg: "Given port is system port. Use with caution"
+      when: ssh_hardening_port < 1024 and ssh_hardening_port != 22
 
-  - name: Create backup sshd_config
-    copy:
-      src: /etc/ssh/sshd_config
-      dest: /etc/ssh/sshd_config.backup
-      remote_src: true
-      mode: 0644
-      owner: root
-      group: root
+    - name: Create backup sshd_config
+      ansible.builtin.copy:
+        src: /etc/ssh/sshd_config
+        dest: /etc/ssh/sshd_config.backup
+        remote_src: true
+        mode: "0644"
+        owner: root
+        group: root
 
-  - name: Disable password authentication via ssh
-    lineinfile:
-      path: /etc/ssh/sshd_config
-      regexp: "^.*PasswordAuthentication .*$"
-      line: "PasswordAuthentication no"
-    when: disable_pass_sshd == True
-    notify: Restart sshd
+    - name: Disable password authentication via ssh
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^.*PasswordAuthentication .*$"
+        line: "PasswordAuthentication no"
+      when: ssh_hardening_disable_pass
+      notify: Restart sshd
 
-  - name: Disable root login via ssh 
-    lineinfile:
-      path: /etc/ssh/sshd_config
-      regexp: "^.*PermitRootLogin .*$"
-      line: "PermitRootLogin no"
-    notify: Restart sshd
+    - name: Disable root login via ssh
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^.*PermitRootLogin .*$"
+        line: "PermitRootLogin no"
+      notify: Restart sshd
 
-  - name: Change port for ssh
-    lineinfile:
-      path: /etc/ssh/sshd_config
-      regexp: "^.*Port .*$"
-      line: "Port {{ ssh_port }} "
-    notify: Restart sshd
+    - name: Change port for ssh
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^.*Port .*$"
+        line: "Port {{ ssh_hardening_port }} "
+      notify: Restart sshd
 
-  - name: Open ssh port in firewall
-    include_role: 
-      name: firewall_setup
-    vars:
-      port_to_open: "{{ ssh_port }}"
+    - name: Open ssh port in firewall
+      ansible.builtin.include_role:
+        name: firewall_setup
+      vars:
+        firewall_setup_port_to_open: "{{ ssh_hardening_port }}"
 
-  - name: Add port to ssh_port_t in SElinux
-    include_role:
-      name: selinux_configuration
-    vars:
-      selinux_rules:
-        - port: "{{ ssh_port }}"
-          type: ssh_port_t
-  
+    - name: Add port to ssh_port_t in SElinux
+      ansible.builtin.include_role:
+        name: selinux_configuration
+      vars:
+        selinux_configuration_rules:
+          - port: "{{ ssh_hardening_port }}"
+            type: ssh_port_t
+
   rescue:
     - name: Check if backup exists
-      stat:
+      ansible.builtin.stat:
         path: /etc/ssh/sshd_config.backup
-      register: backup_result
+      register: ssh_hardening_backup_result
 
     - name: Restore backup if exists
-      copy: 
+      ansible.builtin.copy:
         src: /etc/ssh/sshd_config.backup
         dest: /etc/ssh/sshd_config
         remote_src: true
-      when: backup_result.stat.exists
+        mode: "0644"
+        owner: root
+        group: root
+      when: ssh_hardening_backup_result.stat.exists
       notify: Restart sshd
 
     - name: Something is wrong with configuring sshd
-      debug:
+      ansible.builtin.debug:
         msg: Configurating sshd went wrong. Backup restored
-      failed_when: True
-    
+      failed_when: true
+
   always:
     - name: Remove backup file
-      file:
+      ansible.builtin.file:
         path: /etc/ssh/sshd_config.backup
         state: absent

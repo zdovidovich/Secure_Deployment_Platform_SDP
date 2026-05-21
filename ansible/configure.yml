@@ -4,30 +4,28 @@
   become: true
 
   tasks:
-  - name: Update repos
-    include_role: 
-      name: update_repos
-    
-  - name: Configure ssh
-    include_role: 
-      name: ssh_hardening
-  
-  - name: Configure fail2ban for ssh
-    include_role:
-      name: ssh_fail2ban_configuration
-    when: ssh_fail2ban_state == True
-  
-  - name: Install docker
-    include_role:
-      name: docker_install
+    - name: Update repos
+      ansible.builtin.include_role:
+        name: update_repos
 
-  - name: Configure fail2ban for docker container
-    include_role:
-      name: fail2ban_configuration
-    when: enable_container_fail2ban == True
+    - name: Configure ssh
+      ansible.builtin.include_role:
+        name: ssh_hardening
 
-  - name: Deploy app
-    include_role:
-      name: app_deploy
+    - name: Configure fail2ban for ssh
+      ansible.builtin.include_role:
+        name: ssh_fail2ban_configuration
+      when: ssh_fail2ban_state
 
-  
+    - name: Install docker
+      ansible.builtin.include_role:
+        name: docker_install
+
+    - name: Configure fail2ban for docker container
+      ansible.builtin.include_role:
+        name: fail2ban_configuration
+      when: enable_container_fail2ban
+
+    - name: Deploy app
+      ansible.builtin.include_role:
+        name: app_deploy

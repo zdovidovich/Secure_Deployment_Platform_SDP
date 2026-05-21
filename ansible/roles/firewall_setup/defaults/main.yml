@@ -1,4 +1,4 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # defaults file for firewall_setup
-port_to_open : 22
+firewall_setup_port_to_open: 22

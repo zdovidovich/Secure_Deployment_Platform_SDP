@@ -51,6 +51,26 @@ Requirements:
 
 `.venv/bin/python3 ./app/app.py`
 
+### API
+
+The application now exposes a lightweight HTTP API from the same monolith.
+
+- `GET /api/v1/health` - healthcheck
+- `POST /api/v1/deployments` - start deployment
+- `GET /api/v1/deployments/<deployment_id>` - get deployment status/result
+- `GET /api/v1/deployments/<deployment_id>/events` - stream deployment logs over SSE
+
+`POST /api/v1/deployments` expects `multipart/form-data` with the same fields as the web form and these required files:
+
+- `ssh_key`
+- `docker_image`
+
+Optional:
+
+- `dockerfile`
+
+If `SDP_API_KEY` is set in the environment, API requests must include header `X-API-Key: <value>`.
+
 
 2. Managed Node
 

@@ -1,13 +1,13 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # defaults file for app_deploy
-app_image_path: ""
-app_image_name: ""
-app_container_name: ""
-app_ports:
+app_deploy_image_path: ""
+app_deploy_image_name: ""
+app_deploy_container_name: ""
+app_deploy_ports:
   - ""
-app_envs: {} 
-app_volumes: []
-app_ro_fs: false
-app_cpus: null
-app_memory: null
+app_deploy_envs: {}
+app_deploy_volumes: []
+app_deploy_ro_fs: false
+app_deploy_cpus: null
+app_deploy_memory: null
