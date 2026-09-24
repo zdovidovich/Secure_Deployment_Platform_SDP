@@ -365,6 +365,103 @@ textarea {
     animation: pulse 2s infinite;
 }
 
+/* --- Secondary / small buttons (site style) --- */
+.btn-secondary {
+    padding: 0.45rem 1rem;
+    font-size: 0.9rem;
+    font-family: inherit;
+    font-weight: 500;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--gold-light);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: rgba(212, 175, 55, 0.12);
+    border-color: var(--gold);
+    color: var(--text);
+}
+
+.btn-secondary:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.btn-secondary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.btn-secondary.is-active {
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    border-color: var(--gold);
+    color: var(--dark);
+    font-weight: 600;
+}
+
+/* --- Server cards on the main form --- */
+.server-card {
+    background: var(--dark-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    transition: border-color 0.2s;
+}
+
+.server-card:focus-within {
+    border-color: var(--gold);
+}
+
+.server-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.server-card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--gold);
+}
+
+.server-remove-btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.server-remove-btn:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.section-hint {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+}
+
+.mt-1 {
+    margin-top: 1rem;
+}
+
 @keyframes pulse {
 
     0%,

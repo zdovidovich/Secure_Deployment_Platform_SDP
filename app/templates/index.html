@@ -30,12 +30,12 @@
 
                 <div class="form-section">
                     <h3>Целевые серверы</h3>
-                    <p class="section-hint" style="font-size: 0.85rem; opacity: 0.7; margin-bottom: 0.75rem;">
+                    <p class="section-hint">
                         Одни и те же настройки будут применены ко всем серверам из списка.
                     </p>
                     <div id="serverList"></div>
-                    <button type="button" class="btn-small" id="addServerBtn" style="margin-top: 0.75rem;">
-                        + Добавить сервер
+                    <button type="button" class="btn-secondary" id="addServerBtn">
+                        ✦ Добавить сервер
                     </button>
 
                     <div class="form-grid" style="margin-top: 1rem;">
@@ -353,14 +353,10 @@
         function createServerCard() {
             const card = document.createElement('div');
             card.className = 'server-card';
-            card.style.border = '1px solid rgba(255,255,255,0.12)';
-            card.style.borderRadius = '8px';
-            card.style.padding = '1rem';
-            card.style.marginBottom = '0.75rem';
             card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <div class="server-card-header">
                     <strong class="server-card-title">Сервер #1</strong>
-                    <button type="button" class="btn-small server-remove-btn" title="Удалить сервер">✕</button>
+                    <button type="button" class="server-remove-btn" title="Удалить сервер">✕</button>
                 </div>
                 <div class="form-grid">
                     <div class="form-group">
@@ -373,7 +369,7 @@
                         <input type="number" name="ansible_port[]" value="22" min="1" max="65535">
                     </div>
                 </div>
-                <div class="form-group" style="margin-top:0.75rem;">
+                <div class="form-group mt-1">
                     <label>Пользователь <span class="required">*</span></label>
                     <input type="text" name="ansible_user[]" placeholder="ubuntu" required>
                 </div>
@@ -394,8 +390,8 @@
             });
             addServerBtn.disabled = cards.length >= MAX_SERVERS;
             addServerBtn.textContent = cards.length >= MAX_SERVERS
-                ? `Максимум ${MAX_SERVERS} серверов`
-                : '+ Добавить сервер';
+                ? `Достигнут лимит: ${MAX_SERVERS} серверов`
+                : '✦ Добавить сервер';
         }
 
         addServerBtn.addEventListener('click', () => {
