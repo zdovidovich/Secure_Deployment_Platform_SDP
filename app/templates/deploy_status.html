@@ -38,7 +38,7 @@
 
         <div class="form-card" style="margin-bottom: 1.5rem;">
             <h3>Целевые серверы</h3>
-            <div id="serverList" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.75rem;"></div>
+            <div id="serverList" class="server-grid"></div>
         </div>
 
         <div class="console-card">
@@ -52,7 +52,7 @@
                     <button class="btn-small" onclick="copyConsole()">Копировать</button>
                 </div>
             </div>
-            <div id="hostFilterBar" style="display: none; gap: 0.5rem; flex-wrap: wrap; padding: 0.5rem 1rem 0;"></div>
+            <div id="hostFilterBar" class="host-filter-bar"></div>
             <div class="console-output" id="consoleOutput">
                 <div class="log-entry info">
                     <span class="log-timestamp">--:--:--</span>
@@ -227,15 +227,14 @@
             const list = document.getElementById('serverList');
             if (!list) return;
             if (!servers.length) {
-                list.innerHTML = '<span style="opacity:0.6;">Список серверов появится после старта выполнения</span>';
+                list.innerHTML = '<span class="server-list-empty">Список серверов появится после старта выполнения</span>';
                 return;
             }
             list.innerHTML = servers.map(s => `
-                <div class="server-badge" style="border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:0.5rem 0.75rem;">
-                    <strong>${escapeHtml(String(s.host))}:${escapeHtml(String(s.port || 22))}</strong>
-                    <span style="opacity:0.6; font-size:0.85rem;"> (${escapeHtml(String(s.user || ''))})</span><br>
-                    <span class="status-text ${s.status === 'failed' || s.status === 'unreachable' ? 'error' : s.status}"
-                          style="font-size:0.8rem;">${SERVER_STATUS_LABELS[s.status] || s.status}</span>
+                <div class="server-badge ${escapeHtml(String(s.status))}">
+                    <span class="server-badge-address">${escapeHtml(String(s.host))}:${escapeHtml(String(s.port || 22))}</span>
+                    <span class="server-badge-user">(${escapeHtml(String(s.user || ''))})</span><br>
+                    <span class="server-badge-status">${SERVER_STATUS_LABELS[s.status] || escapeHtml(String(s.status))}</span>
                 </div>
             `).join('');
         }
@@ -244,19 +243,19 @@
             const bar = document.getElementById('hostFilterBar');
             if (!bar) return;
             if (servers.length <= 1) {
-                bar.style.display = 'none';
+                bar.classList.remove('visible');
                 bar.innerHTML = '';
                 return;
             }
             const mkBtn = (label, host) => {
                 const active = activeHostFilter === host;
-                return `<button type="button" class="btn-small" data-filter-host="${host === null ? '' : escapeHtml(String(host))}"
-                          style="${active ? 'outline: 2px solid currentColor;' : ''}">${escapeHtml(label)}</button>`;
+                return `<button type="button" class="btn-small${active ? ' is-active' : ''}" data-filter-host="${host === null ? '' : escapeHtml(String(host))}">${escapeHtml(label)}</button>`;
             };
-            bar.style.display = 'flex';
-            bar.innerHTML = [mkBtn('Все серверы', null)]
-                .concat(servers.map(s => mkBtn(String(s.host), s.host)))
-                .join(' ');
+            bar.innerHTML = '<span class="host-filter-label">Логи:</span>'
+                + [mkBtn('Все серверы', null)]
+                    .concat(servers.map(s => mkBtn(String(s.host), s.host)))
+                    .join(' ');
+            bar.classList.add('visible');
             bar.querySelectorAll('button').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const h = btn.dataset.filterHost;
@@ -302,11 +301,8 @@
         }
 
         function updateProgress() {
-            const progressFill = document.getElementById('progressFill');
-            const stages = ['pending', 'running', 'success', 'error'];
-            const currentStage = document.getElementById('statusIndicator').className.replace('status-indicator ', '');
-            const progress = stages.indexOf(currentStage) * 33;
-            progressFill.style.width = `${Math.min(progress, 100)}%`;
+            // Прогресс-бар на странице отсутствует — прогресс по серверам
+            // показывается в карточках "Целевые серверы".
         }
 
         function showFinalReport() {

@@ -418,3 +418,115 @@
             .report-actions { flex-direction: column; }
             .connection-status { bottom: 1rem; right: 1rem; }
         }
+/* --- Multi-server UI (badges, host filter) --- */
+.server-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.server-badge {
+    min-width: 180px;
+    padding: 0.75rem 1rem;
+    background: var(--dark-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: border-color 0.2s;
+}
+
+.server-badge-address {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.9rem;
+    color: var(--text);
+}
+
+.server-badge-user {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.server-badge-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.server-badge-status::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.server-badge.pending   { border-color: rgba(255, 255, 255, 0.12); }
+.server-badge.running   { border-color: var(--info); }
+.server-badge.success   { border-color: var(--success); }
+.server-badge.failed,
+.server-badge.unreachable { border-color: var(--danger); }
+
+.server-badge.pending   .server-badge-status { color: var(--text-muted); }
+.server-badge.running   .server-badge-status { color: var(--info); }
+.server-badge.success   .server-badge-status { color: var(--success); }
+.server-badge.failed    .server-badge-status { color: var(--danger); }
+.server-badge.unreachable .server-badge-status { color: var(--danger); }
+
+.server-badge.running .server-badge-status::before { animation: pulse 1.5s infinite; }
+
+.server-list-empty {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    opacity: 0.7;
+}
+
+.host-filter-bar {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.75rem 1.5rem 0;
+}
+
+.host-filter-bar.visible {
+    display: flex;
+}
+
+.host-filter-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-right: 0.25rem;
+}
+
+.btn-small {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.8rem;
+    font-family: inherit;
+    border-radius: 9999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--gold-light);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-small:hover:not(:disabled) {
+    background: rgba(212, 175, 55, 0.12);
+    border-color: var(--gold);
+    color: var(--text);
+}
+
+.btn-small:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.btn-small.is-active {
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    border-color: var(--gold);
+    color: var(--dark);
+    font-weight: 600;
+}
