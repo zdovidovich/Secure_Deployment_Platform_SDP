@@ -1,6 +1,6 @@
 from typing import Dict, Optional
 
-from libs.ansible import run_full_configuring
+from libs.ansible import make_host_event_callback, run_full_configuring
 from libs.hadolint import format_hadolint_result, scan_dockerfile
 from libs.temp_files import cleanup_specific_files, create_inventory_temp_file
 from libs.trivy import format_trivy_result, scan_image
@@ -19,6 +19,60 @@ class DeploymentService:
         self.logger = SSEBroadcaster(session_id)
         self.status = "pending"  # pending, running, success, error
         self.result: Optional[Dict] = None
+        # Статусы по каждому серверу: {hostname: {"host", "user", "status", ...}}
+        self.servers: list = []
+        self._host_to_label: Dict[str, str] = {}
+
+    def _build_event_handler(self):
+        """
+        Возвращает callback для ansible-runner: каждое событие хоста
+        транслируется в SSE-поток с меткой конкретного сервера, поэтому
+        логи каждой машины видно в реальном времени.
+        """
+
+        def on_host_event(event_type: str, host: str, event_data: dict):
+            label = self._host_to_label.get(host)
+            if label is None:
+                return
+
+            entry = next((s for s in self.servers if s["hostname"] == host), None)
+            runner = event_data.get("event_data", {}).get("runner", {})
+            task = runner.get("task", "")
+
+            message = None
+            level = "debug"
+
+            if event_type == "runner_on_start":
+                message = f"[{label}] STARTED :: {task}"
+                if entry is not None and entry["status"] == "pending":
+                    entry["status"] = "running"
+            elif event_type == "runner_on_ok":
+                changed = bool(runner.get("res", {}).get("changed"))
+                message = f"[{label}] {'CHANGED' if changed else 'OK'} :: {task}"
+            elif event_type in ("runner_on_failed", "runner_on_error"):
+                res = runner.get("res", {})
+                msg = res.get("msg") or res.get("stderr") or "task failed"
+                message = f"[{label}] FAILED :: {str(msg).splitlines()[0][:300]}"
+                level = "error"
+                if entry is not None:
+                    entry["status"] = "failed"
+            elif event_type == "runner_on_unreachable":
+                msg = runner.get("res", {}).get("msg", "host unreachable")
+                message = f"[{label}] UNREACHABLE :: {str(msg).splitlines()[0][:300]}"
+                level = "error"
+                if entry is not None:
+                    entry["status"] = "unreachable"
+            elif event_type == "verbose":
+                line = (event_data.get("stdout") or "").strip()
+                if line:
+                    message = f"[{label}] {line}"
+
+            if message and message.strip():
+                self.logger.send_host_log(level, message, host=label)
+
+        # make_host_event_callback фильтрует события без хоста и защищает
+        # от исключений внутри обработки — логи не уронят процесс деплоя
+        return make_host_event_callback(on_host_event)
 
     def execute(self, form_data: dict, file_paths: dict) -> Dict:
         """
@@ -74,8 +128,21 @@ class DeploymentService:
                     self.logger.error(f"Hadolint ошибка: {hadolint_result['error']}")
                     return self.result
 
-            if form_data.get("enable_trivy") == "on":
-                trivy_fail_on = form_data.get("trivy_fail_on", "HIGH")
+            # form_data может приходить как из API (значения — списки,
+            # т.к. поля повторяются для нескольких серверов), так и из
+            # обычных форм (строки) — нормализуем к скалярному виду
+            def _scalar(value, default=None):
+                if isinstance(value, (list, tuple)):
+                    value = value[0] if len(value) > 0 else None
+                if value is None:
+                    return default
+                return value
+
+            def _flag(name: str) -> bool:
+                return _scalar(form_data.get(name)) in ("on", "true", "1")
+
+            if _flag("enable_trivy"):
+                trivy_fail_on = _scalar(form_data.get("trivy_fail_on"), "HIGH")
                 self.logger.info(
                     f"Сканирование образа (Trivy), порог блокировки: {trivy_fail_on}..."
                 )
@@ -116,33 +183,48 @@ class DeploymentService:
                 )
 
             self.logger.info("Подготовка Ansible inventory...")
-            inventory_path = create_inventory_temp_file(
-                {
-                    "ansible_host": validated_data["ansible_host"],
-                    "ansible_port": validated_data["ansible_port"],
-                    "ansible_user": validated_data["ansible_user"],
-                },
+            servers = validated_data["servers"]
+            inventory_path, hostnames = create_inventory_temp_file(
+                servers,
                 ssh_key_path,
             )
 
+            # Маппинг внутренних имён хостов Ansible в публичные IP-адреса
+            self._host_to_label = {
+                hostname: server["host"]
+                for hostname, server in zip(hostnames, servers)
+            }
+            self.servers = [
+                {
+                    "hostname": hostname,
+                    "host": server["host"],
+                    "port": server["port"],
+                    "user": server["user"],
+                    "status": "pending",
+                }
+                for hostname, server in zip(hostnames, servers)
+            ]
+            self.logger.info(
+                f"Серверов в inventory: {len(servers)}: "
+                + ", ".join(s["host"] for s in servers)
+            )
+            self.logger.send_servers_event(self.servers)
+
             self.logger.info("Запуск Ansible playbook...")
+            # Порт по умолчанию берём из первого сервера (в валидированных
+            # данных ansible_port — скаляр, даже если серверов несколько)
+            default_ssh_port = _scalar(validated_data.get("ansible_port"), 22)
+            ssh_new_port = _scalar(validated_data.get("ssh_hardening_port")) or default_ssh_port
+
             extra_vars = {
-                "ssh_hardening_port": validated_data.get(
-                    "ssh_hardening_port", validated_data["ansible_port"]
-                ),
-                "ssh_fail2ban_configuration_port": validated_data.get(
-                    "ssh_hardening_port", validated_data["ansible_port"]
-                ),
+                "ssh_hardening_port": ssh_new_port,
+                "ssh_fail2ban_configuration_port": ssh_new_port,
                 "app_deploy_image_path": image_path,
                 "selinux_configuration_state": (
-                    "enforcing"
-                    if form_data.get("enable_selinux") == "on"
-                    else "disabled"
+                    "enforcing" if _flag("enable_selinux") else "disabled"
                 ),
-                "ssh_fail2ban_state": form_data.get("enable_fail2ban_for_ssh") == "on",
-                "ssh_hardening_disable_pass": (
-                    form_data.get("ssh_hardening_disable_pass") == "on"
-                ),
+                "ssh_fail2ban_state": _flag("enable_fail2ban_for_ssh"),
+                "ssh_hardening_disable_pass": _flag("ssh_hardening_disable_pass"),
                 "app_deploy_image_name": validated_data["app_deploy_image_name"],
                 "app_deploy_container_name": validated_data[
                     "app_deploy_container_name"
@@ -152,20 +234,19 @@ class DeploymentService:
                 ],
                 "app_deploy_volumes": validated_data["app_deploy_volumes"],
                 "app_deploy_envs": validated_data["app_deploy_envs"],
-                "app_deploy_ro_fs": form_data.get("app_deploy_ro_fs") == "on",
+                "app_deploy_ro_fs": _flag("app_deploy_ro_fs"),
                 "app_deploy_cpus": validated_data.get("app_deploy_cpus", None),
                 "app_deploy_memory": validated_data.get("app_deploy_memory", None),
-                "enable_container_fail2ban": (
-                    form_data.get("enable_container_fail2ban") == "on"
+                "enable_container_fail2ban": _flag("enable_container_fail2ban"),
+                "fail2ban_configuration_app_log_path": _scalar(
+                    form_data.get("fail2ban_configuration_app_log_path"),
+                    "/var/log/app/access.log",
                 ),
-                "fail2ban_configuration_app_log_path": validated_data.get(
-                    "fail2ban_configuration_app_log_path", "/var/log/app/access.log"
+                "fail2ban_configuration_app_filter": _scalar(
+                    form_data.get("fail2ban_configuration_app_filter"), "app-generic"
                 ),
-                "fail2ban_configuration_app_filter": validated_data.get(
-                    "fail2ban_configuration_app_filter", "app-generic"
-                ),
-                "fail2ban_configuration_app_regex": validated_data.get(
-                    "fail2ban_configuration_app_regex", ""
+                "fail2ban_configuration_app_regex": _scalar(
+                    form_data.get("fail2ban_configuration_app_regex"), ""
                 ),
                 "fail2ban_configuration_app_maxretry": validated_data.get(
                     "fail2ban_configuration_app_maxretry", 5
@@ -182,7 +263,28 @@ class DeploymentService:
                 ),
             }
 
-            ansible_result = run_full_configuring(extra_vars, inventory_path)
+            ansible_result = run_full_configuring(
+                extra_vars,
+                inventory_path,
+                event_callback=self._build_event_handler(),
+            )
+
+            # Итоговые статусы по каждому серверу на основе статистики Ansible
+            stats = ansible_result.stats or {}
+            contact_stats = stats.get("contacted", {})
+            unreachable_stats = stats.get("unreachable", {})
+            failed_stats = stats.get("failed", {})
+            for server in self.servers:
+                hostname = server["hostname"]
+                if hostname in unreachable_stats:
+                    server["status"] = "unreachable"
+                elif hostname in failed_stats:
+                    server["status"] = "failed"
+                elif hostname in contact_stats:
+                    server["status"] = "success"
+                elif server["status"] not in ("failed", "unreachable"):
+                    server["status"] = "skipped"
+            self.logger.send_servers_event(self.servers)
 
             for line in ansible_result.stdout.read().split("\n"):
                 if line.strip():
@@ -193,6 +295,7 @@ class DeploymentService:
                 self.result = {
                     "error": "Ansible playbook failed",
                     "stats": ansible_result.stats,
+                    "servers": self.servers,
                     "stderr": ansible_result.stderr.read(),
                 }
                 self.logger.error("Ansible завершился с ошибкой")
@@ -205,6 +308,7 @@ class DeploymentService:
                 self.result = {
                     "success": True,
                     "stats": ansible_result.stats,
+                    "servers": self.servers,
                     "message": "Деплой успешно завершён",
                 }
 
