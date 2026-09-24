@@ -29,25 +29,18 @@
             <div class="form-card">
 
                 <div class="form-section">
-                    <h3>Целевой сервер</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="ansible_host">IP адрес <span class="required">*</span></label>
-                            <input type="text" id="ansible_host" name="ansible_host" placeholder="192.168.1.100" required
-                                pattern="^(\d{1,3}\.){3}\d{1,3}$">
-                        </div>
-                        <div class="form-group">
-                            <label for="ansible_port">SSH порт</label>
-                            <input type="number" id="ansible_port" name="ansible_port" value="22" min="1" max="65535">
-                        </div>
-                    </div>
+                    <h3>Целевые серверы</h3>
+                    <p class="section-hint" style="font-size: 0.85rem; opacity: 0.7; margin-bottom: 0.75rem;">
+                        Одни и те же настройки будут применены ко всем серверам из списка.
+                    </p>
+                    <div id="serverList"></div>
+                    <button type="button" class="btn-small" id="addServerBtn" style="margin-top: 0.75rem;">
+                        + Добавить сервер
+                    </button>
+
                     <div class="form-grid" style="margin-top: 1rem;">
                         <div class="form-group">
-                            <label for="ansible_user">Пользователь <span class="required">*</span></label>
-                            <input type="text" id="ansible_user" name="ansible_user" placeholder="ubuntu" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="ssh_key">SSH ключ <span class="required">*</span></label>
+                            <label for="ssh_key">SSH ключ (для всех серверов) <span class="required">*</span></label>
                             <label class="file-upload" for="ssh_key">
                                 <input type="file" id="ssh_key" name="ssh_key" required>
                                 <span class="file-upload-label">
@@ -352,7 +345,71 @@
             }
         }
 
+        // --- Динамический список целевых серверов ---
+        const MAX_SERVERS = 10;
+        const serverListEl = document.getElementById('serverList');
+        const addServerBtn = document.getElementById('addServerBtn');
+
+        function createServerCard() {
+            const card = document.createElement('div');
+            card.className = 'server-card';
+            card.style.border = '1px solid rgba(255,255,255,0.12)';
+            card.style.borderRadius = '8px';
+            card.style.padding = '1rem';
+            card.style.marginBottom = '0.75rem';
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                    <strong class="server-card-title">Сервер #1</strong>
+                    <button type="button" class="btn-small server-remove-btn" title="Удалить сервер">✕</button>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>IP адрес <span class="required">*</span></label>
+                        <input type="text" name="ansible_host[]" placeholder="192.168.1.100" required
+                            pattern="^(\\d{1,3}\\.){3}\\d{1,3}$">
+                    </div>
+                    <div class="form-group">
+                        <label>SSH порт</label>
+                        <input type="number" name="ansible_port[]" value="22" min="1" max="65535">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:0.75rem;">
+                    <label>Пользователь <span class="required">*</span></label>
+                    <input type="text" name="ansible_user[]" placeholder="ubuntu" required>
+                </div>
+            `;
+            card.querySelector('.server-remove-btn').addEventListener('click', () => {
+                card.remove();
+                renumberServers();
+            });
+            return card;
+        }
+
+        function renumberServers() {
+            const cards = serverListEl.querySelectorAll('.server-card');
+            cards.forEach((card, i) => {
+                card.querySelector('.server-card-title').textContent = `Сервер #${i + 1}`;
+                const removeBtn = card.querySelector('.server-remove-btn');
+                removeBtn.style.display = cards.length > 1 ? '' : 'none';
+            });
+            addServerBtn.disabled = cards.length >= MAX_SERVERS;
+            addServerBtn.textContent = cards.length >= MAX_SERVERS
+                ? `Максимум ${MAX_SERVERS} серверов`
+                : '+ Добавить сервер';
+        }
+
+        addServerBtn.addEventListener('click', () => {
+            if (serverListEl.querySelectorAll('.server-card').length >= MAX_SERVERS) {
+                return;
+            }
+            serverListEl.appendChild(createServerCard());
+            renumberServers();
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
+            serverListEl.appendChild(createServerCard());
+            renumberServers();
+
             updateTrivyThresholdVisibility();
 
             document.getElementById('enable_trivy').addEventListener('change', updateTrivyThresholdVisibility);

@@ -36,6 +36,11 @@
             </div>
         </div>
 
+        <div class="form-card" style="margin-bottom: 1.5rem;">
+            <h3>Целевые серверы</h3>
+            <div id="serverList" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.75rem;"></div>
+        </div>
+
         <div class="console-card">
             <div class="console-header">
                 <h2 class="console-title">
@@ -47,6 +52,7 @@
                     <button class="btn-small" onclick="copyConsole()">Копировать</button>
                 </div>
             </div>
+            <div id="hostFilterBar" style="display: none; gap: 0.5rem; flex-wrap: wrap; padding: 0.5rem 1rem 0;"></div>
             <div class="console-output" id="consoleOutput">
                 <div class="log-entry info">
                     <span class="log-timestamp">--:--:--</span>
@@ -88,8 +94,11 @@
         let consoleBuffer = [];
         let isFinished = false;
         let logIndex = 0;
+        let servers = [];            // [{host, port, user, status}, ...]
+        let activeHostFilter = null; // null = показывать все логи
 
         document.addEventListener('DOMContentLoaded', () => {
+            renderServers();
             connectSSE();
             loadInitialStatus();
             updateProgress();
@@ -104,6 +113,16 @@
 
                 const data = await response.json();
                 updateStatus(data.status);
+                if (Array.isArray(data.servers) && data.servers.length) {
+                    servers = data.servers.map(s => ({
+                        host: s.host,
+                        port: s.port,
+                        user: s.user,
+                        status: s.status || 'pending',
+                    }));
+                    renderServers();
+                    renderHostFilterBar();
+                }
             } catch (e) {
                 console.error('РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё СЃС‚Р°С‚СѓСЃР°:', e);
             }
@@ -128,6 +147,18 @@
                         eventSource.close();
                         updateConnectionStatus(false);
                         return;
+                    }
+
+                    // Снимок статусов серверов: source=servers, details.servers=[...]
+                    if (data.source === 'servers' && data.details && Array.isArray(data.details.servers)) {
+                        servers = data.details.servers.map(s => ({
+                            host: s.host,
+                            port: s.port,
+                            user: s.user,
+                            status: s.status || 'pending',
+                        }));
+                        renderServers();
+                        renderHostFilterBar();
                     }
 
                     addLogEntry(data);
@@ -156,15 +187,24 @@
         function addLogEntry(entry) {
             const consoleOutput = document.getElementById('consoleOutput');
             const timestamp = new Date(entry.timestamp).toLocaleTimeString('ru-RU');
-            
+            const host = entry.details && entry.details.host ? entry.details.host : null;
+
             const logDiv = document.createElement('div');
             logDiv.className = `log-entry ${entry.level}`;
+            if (host) {
+                logDiv.dataset.host = host;
+            }
             logDiv.innerHTML = `
                 <span class="log-timestamp">${timestamp}</span>
                 <span class="log-source ${entry.source}">${entry.source}</span>
-                <span class="log-message">${escapeHtml(entry.message)}</span>
+                <span class="log-message">${host ? '[' + escapeHtml(host) + '] ' : ''}${escapeHtml(entry.message)}</span>
                 ${entry.details && entry.details.report ? `<div class="log-details">${escapeHtml(entry.details.report)}</div>` : ''}
             `;
+
+            // Скрыть строку, если активен фильтр по другому серверу
+            if (activeHostFilter !== null && host !== activeHostFilter) {
+                logDiv.style.display = 'none';
+            }
 
             consoleOutput.appendChild(logDiv);
             consoleBuffer.push(entry);
@@ -173,6 +213,66 @@
             if (consoleOutput.scrollHeight - consoleOutput.scrollTop - consoleOutput.clientHeight < 100) {
                 scrollToBottom();
             }
+        }
+
+        const SERVER_STATUS_LABELS = {
+            'pending': 'Ожидание',
+            'running': 'Выполняется',
+            'success': 'Успешно',
+            'failed': 'Ошибка',
+            'unreachable': 'Недоступен',
+        };
+
+        function renderServers() {
+            const list = document.getElementById('serverList');
+            if (!list) return;
+            if (!servers.length) {
+                list.innerHTML = '<span style="opacity:0.6;">Список серверов появится после старта выполнения</span>';
+                return;
+            }
+            list.innerHTML = servers.map(s => `
+                <div class="server-badge" style="border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:0.5rem 0.75rem;">
+                    <strong>${escapeHtml(String(s.host))}:${escapeHtml(String(s.port || 22))}</strong>
+                    <span style="opacity:0.6; font-size:0.85rem;"> (${escapeHtml(String(s.user || ''))})</span><br>
+                    <span class="status-text ${s.status === 'failed' || s.status === 'unreachable' ? 'error' : s.status}"
+                          style="font-size:0.8rem;">${SERVER_STATUS_LABELS[s.status] || s.status}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderHostFilterBar() {
+            const bar = document.getElementById('hostFilterBar');
+            if (!bar) return;
+            if (servers.length <= 1) {
+                bar.style.display = 'none';
+                bar.innerHTML = '';
+                return;
+            }
+            const mkBtn = (label, host) => {
+                const active = activeHostFilter === host;
+                return `<button type="button" class="btn-small" data-filter-host="${host === null ? '' : escapeHtml(String(host))}"
+                          style="${active ? 'outline: 2px solid currentColor;' : ''}">${escapeHtml(label)}</button>`;
+            };
+            bar.style.display = 'flex';
+            bar.innerHTML = [mkBtn('Все серверы', null)]
+                .concat(servers.map(s => mkBtn(String(s.host), s.host)))
+                .join(' ');
+            bar.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const h = btn.dataset.filterHost;
+                    activeHostFilter = h === '' ? null : h;
+                    applyHostFilter();
+                    renderHostFilterBar();
+                });
+            });
+        }
+
+        function applyHostFilter() {
+            document.querySelectorAll('#consoleOutput .log-entry').forEach(div => {
+                const host = div.dataset.host || null;
+                div.style.display = (activeHostFilter === null || host === activeHostFilter) ? '' : 'none';
+            });
+            scrollToBottom();
         }
 
         function updateStatus(status) {
@@ -189,6 +289,15 @@
                 'error': 'Ошибка выполнения'
             };
             
+            // Если есть провалившие серверы — показываем частичный успех
+            const failedServers = servers.filter(s => s.status === 'failed' || s.status === 'unreachable');
+            if (status === 'success' && failedServers.length) {
+                indicator.className = 'status-indicator error';
+                text.className = 'status-text error';
+                text.textContent = `Завершено с ошибками (${failedServers.length} из ${servers.length})`;
+                return;
+            }
+
             text.textContent = statusMessages[status] || status;
         }
 
