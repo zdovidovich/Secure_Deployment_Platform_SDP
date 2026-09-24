@@ -40,6 +40,19 @@ def _build_file_paths():
     return file_paths
 
 
+def _get_form_data():
+    """
+    Данные формы с сохранением повторяющихся полей (несколько серверов
+    передаются как ansible_host[], ansible_port[], ansible_user[]).
+    Возвращает dict, совместимый с getlist() (значения — списки).
+    """
+    form = request.form
+    data = {}
+    for key in form:
+        data[key] = form.getlist(key)
+    return data
+
+
 @api_bp.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})
@@ -62,7 +75,7 @@ def create_deployment():
             400,
         )
 
-    form_data = request.form.to_dict()
+    form_data = _get_form_data()
     file_paths = _build_file_paths()
     job = deployment_store.create()
 
@@ -107,6 +120,7 @@ def get_deployment(deployment_id: str):
             "deployment_id": deployment_id,
             "created_at": job.created_at,
             "status": job.service.status,
+            "servers": job.service.servers,
             "result": job.service.result,
         }
     )

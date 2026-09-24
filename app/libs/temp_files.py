@@ -30,10 +30,18 @@ def save_temp_file(file_obj, prefix="upload_"):
     return file_path
 
 
-def create_inventory_temp_file(ansible_params: dict, ssh_key_path) -> str:
+def create_inventory_temp_file(servers: list, ssh_key_path) -> str:
     """
-    Создаёт временный inventory файл для Ansible.
-    Возвращает полный путь к файлу.
+    Создаёт временный inventory файл для Ansible со списком серверов.
+
+    Args:
+        servers: Список словарей с параметрами подключения
+                 [{'host': '1.2.3.4', 'port': 22, 'user': 'ubuntu'}, ...]
+        ssh_key_path: Путь к приватному SSH-ключу
+
+    Returns:
+        (path_to_inventory, hostnames) — путь к файлу и список имён хостов
+        (для обратной совместимости можно использовать только [0]).
     """
     name = uuid.uuid4().hex[:8]
     unique_name = f"inventory_{name}"
@@ -44,19 +52,24 @@ def create_inventory_temp_file(ansible_params: dict, ssh_key_path) -> str:
 
     file_path = os.path.join(inventory_dir, unique_name)
 
+    hostnames = []
+
     with open(file_path, "w") as f:
         f.write("[server]\n")
-        f.write(
-            f"{name} "
-            f"ansible_host={ansible_params['ansible_host']} "
-            f"ansible_port={ansible_params['ansible_port']} "
-            f"ansible_user={ansible_params['ansible_user']} "
-            f"ansible_ssh_private_key_file={ssh_key_path} "
-        )
+        for i, server in enumerate(servers):
+            hostname = f"server_{i + 1}_{name}"
+            hostnames.append(hostname)
+            f.write(
+                f"{hostname} "
+                f"ansible_host={server['host']} "
+                f"ansible_port={server['port']} "
+                f"ansible_user={server['user']} "
+                f"ansible_ssh_private_key_file={ssh_key_path}\n"
+            )
 
     os.chmod(file_path, 0o600)
 
-    return file_path
+    return file_path, hostnames
 
 
 def cleanup_temp_files(

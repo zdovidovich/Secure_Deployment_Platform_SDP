@@ -36,19 +36,26 @@ class ValidationRule:
 
 
 DEPLOY_FORM_RULES: Dict[str, ValidationRule] = {
+    # ansible_host / ansible_port / ansible_user теперь задаются списком
+    # серверов и валидируются через parse_servers_from_form().
+    # Правила ниже оставлены (необязательные) для обратной совместимости
+    # со старыми вызовами API с одиночным сервером.
     "ansible_host": ValidationRule(
         pattern=r"^(\d{1,3}\.){3}\d{1,3}$",
         error_msg="Неверный формат IP адреса",
-        required=True,
+        required=False,
     ),
     "ansible_port": ValidationRule(
         pattern=r"^\d+$",
         error_msg="Порт должен быть числом",
-        required=True,
+        required=False,
         to_int=True,
     ),
     "ssh_hardening_port": ValidationRule(
-        pattern=r"^\d+$", error_msg="SSH порт должен быть числом", to_int=True
+        pattern=r"^\d+$",
+        error_msg="SSH порт должен быть числом",
+        required=False,
+        to_int=True,
     ),
     "app_host_port": ValidationRule(
         pattern=r"^\d+$",
@@ -65,7 +72,7 @@ DEPLOY_FORM_RULES: Dict[str, ValidationRule] = {
     "ansible_user": ValidationRule(
         pattern=r"^[a-zA-Z][a-zA-Z0-9_-]*$",
         error_msg="Имя пользователя должно начинаться с буквы и содержать только буквы, цифры, _ и -",
-        required=True,
+        required=False,
     ),
     "app_deploy_container_name": ValidationRule(
         pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_.-]+$",
@@ -138,6 +145,110 @@ DEPLOY_FORM_RULES: Dict[str, ValidationRule] = {
 }
 
 
+IP_PATTERN = re.compile(r"^(\d{1,3}\.){3}\d{1,3}$")
+USERNAME_PATTERN = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]*$")
+
+
+def _as_list(value) -> List[str]:
+    """Приводит значение поля формы к списку строк (поддержка multi-value)."""
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        return [str(v).strip() for v in value]
+    return [str(value).strip()]
+
+
+def _scalar_form_value(value) -> str:
+    """Скаляр из значения поля формы: список -> первая непустая строка."""
+    if isinstance(value, (list, tuple)):
+        for v in value:
+            v = str(v).strip()
+            if v:
+                return v
+        return ""
+    if value is None:
+        return ""
+    return str(value)
+
+
+def _get_field(form_data: dict, name: str) -> List[str]:
+    """Достаёт поле формы как список, совместимо с dict и MultiDict."""
+    if hasattr(form_data, "getlist"):
+        return [str(v).strip() for v in form_data.getlist(name)]
+    return _as_list(form_data.get(name))
+
+
+def parse_servers_from_form(form_data: dict) -> Tuple[List[dict], List[str]]:
+    """
+    Извлекает список серверов из данных формы.
+
+    Поддерживаются форматы:
+    1. Множественный (новая форма): списки ansible_host[], ansible_port[],
+       ansible_user[] (одинаковые имена полей, разные значения).
+    2. Одиночный (обратная совместимость со старым API): скалярные поля
+       ansible_host, ansible_port, ansible_user.
+
+    Возвращает (servers, errors), где servers — список словарей
+    {'host', 'port', 'user'}.
+    """
+    errors: List[str] = []
+
+    hosts = _get_field(form_data, "ansible_host")
+    ports = _get_field(form_data, "ansible_port")
+    users = _get_field(form_data, "ansible_user")
+
+    # Убираем полностью пустые записи (пустые строки в списке)
+    entries = list(
+        zip(
+            hosts,
+            ports + [""] * max(0, len(hosts) - len(ports)),
+            users + [""] * max(0, len(hosts) - len(users)),
+        )
+    )
+    entries = [(h, p, u) for h, p, u in entries if h or p or u]
+
+    if not entries:
+        return [], ["Не указано ни одного сервера"]
+
+    servers: List[dict] = []
+    seen_hosts = set()
+
+    for idx, (host, port, user) in enumerate(entries, 1):
+        label = f"Сервер {idx}"
+
+        if not host:
+            errors.append(f"{label}: Не указан IP адрес")
+            continue
+        if not IP_PATTERN.match(host) or not all(0 <= int(o) <= 255 for o in host.split(".")):
+            errors.append(f"{label}: Неверный формат IP адреса '{host}'")
+            continue
+        if host in seen_hosts:
+            errors.append(f"{label}: Дублирующийся IP адрес '{host}'")
+            continue
+        seen_hosts.add(host)
+
+        if not port:
+            port = "22"
+        if not port.isdigit():
+            errors.append(f"{label}: Порт должен быть числом ('{port}')")
+            continue
+        port_int = int(port)
+        if not (0 < port_int <= 65535):
+            errors.append(f"{label}: Порт должен быть в диапазоне 1-65535")
+            continue
+
+        if not user:
+            errors.append(f"{label}: Не указан пользователь")
+            continue
+        if not USERNAME_PATTERN.match(user):
+            errors.append(f"{label}: Неверный формат имени пользователя '{user}'")
+            continue
+
+        servers.append({"host": host, "port": port_int, "user": user})
+
+    return servers, errors
+
+
 def validate_all_data(
     form_data: dict, file_path_image, file_path_private_ssh_key
 ) -> Tuple[bool, List[str], dict]:
@@ -148,6 +259,12 @@ def validate_all_data(
     if not file_path_image or not file_path_private_ssh_key:
         return False, ["Не загружены файлы (образ или ключ)"], {}
     is_valid, errors, validated_data = validate_form_data(form_data)
+
+    servers, server_errors = parse_servers_from_form(form_data)
+    errors.extend(server_errors)
+    if server_errors:
+        is_valid = False
+    validated_data["servers"] = servers
 
     for field, min_val, max_val in [
         ("app_fail2ban_maxretry", 1, 20),
@@ -217,7 +334,11 @@ def validate_form_data(form_data: dict) -> Tuple[bool, List[str], dict]:
         if field_name in ["app_deploy_volumes", "app_deploy_envs"]:
             continue
 
-        value_str = form_data.get(field_name, "")
+        # Значения могут приходить списками (повторяющиеся поля формы —
+        # несколько серверов или дубликаты полей). Для скалярных правил
+        # берём первое непустое значение.
+        raw_value = form_data.get(field_name, "")
+        value_str = _scalar_form_value(raw_value)
 
         is_valid, processed_value = rule.validate(value_str)
 
@@ -226,20 +347,28 @@ def validate_form_data(form_data: dict) -> Tuple[bool, List[str], dict]:
         elif processed_value is not None:
             validated_data[field_name] = processed_value
 
+    # Многострочные поля могут прийти списком (повторяющиеся textarea) —
+    # склеиваем элементы в один текст построчно
+    def _multiline(name: str) -> str:
+        return "\n".join(_as_list(form_data.get(name)))
+
+    volumes_raw = _multiline("app_deploy_volumes")
+    envs_raw = _multiline("app_deploy_envs")
+
     volumes_pattern = re.compile(DEPLOY_FORM_RULES["app_deploy_volumes"].pattern)
     volumes_errors = validate_multiline_field(
-        value=form_data.get("app_deploy_volumes", ""),
+        value=volumes_raw,
         line_pattern=volumes_pattern,
         field_name="app_deploy_volumes",
         required=False,
     )
     errors.extend(volumes_errors)
 
-    if not volumes_errors and form_data.get("app_deploy_volumes", "").strip():
+    if not volumes_errors and volumes_raw.strip():
         unique_volumes_host = []
         unique_volumes_container = []
 
-        for line in form_data.get("app_deploy_volumes", "").splitlines():
+        for line in volumes_raw.splitlines():
             new_line = line.split(":")
 
             if new_line[0] not in unique_volumes_host:
@@ -256,26 +385,24 @@ def validate_form_data(form_data: dict) -> Tuple[bool, List[str], dict]:
                 )
 
         validated_data["app_deploy_volumes"] = [
-            line.strip()
-            for line in form_data.get("app_deploy_volumes", "").splitlines()
-            if line.strip()
+            line.strip() for line in volumes_raw.splitlines() if line.strip()
         ]
     else:
         validated_data["app_deploy_volumes"] = []
 
     env_pattern = re.compile(DEPLOY_FORM_RULES["app_deploy_envs"].pattern)
     env_errors = validate_multiline_field(
-        value=form_data.get("app_deploy_envs", ""),
+        value=envs_raw,
         line_pattern=env_pattern,
         field_name="app_deploy_envs",
         required=False,
     )
     errors.extend(env_errors)
 
-    if not env_errors and form_data.get("app_deploy_envs", "").strip():
+    if not env_errors and envs_raw.strip():
         unique_env = []
 
-        for line in form_data.get("app_deploy_envs", "").splitlines():
+        for line in envs_raw.splitlines():
             new_line = line.split("=")
 
             if new_line[0] not in unique_env:
@@ -286,7 +413,7 @@ def validate_form_data(form_data: dict) -> Tuple[bool, List[str], dict]:
                 )
 
         validated_data["app_deploy_envs"] = {}
-        for line in form_data.get("app_deploy_envs", "").splitlines():
+        for line in envs_raw.splitlines():
             line = line.strip()
             if line and "=" in line:
                 key, value = line.split("=", 1)

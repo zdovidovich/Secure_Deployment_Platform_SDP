@@ -26,3 +26,9 @@ def status(deployment_id: str):
 @web_bp.route("/api/status/<deployment_id>", methods=["GET"])
 def legacy_status(deployment_id: str):
     return redirect(f"/api/v1/deployments/{deployment_id}", code=307)
+
+
+@web_bp.route("/stream/<deployment_id>", methods=["GET"])
+def legacy_stream(deployment_id: str):
+    """Старый адрес SSE-потока — редирект на каноничный API-эндпоинт."""
+    return redirect(f"/api/v1/deployments/{deployment_id}/events", code=307)

@@ -85,6 +85,38 @@ class SSEBroadcaster:
     def ansible(self, log_line: str):
         self.send(LogEntry(level="debug", message=log_line, source="ansible"))
 
+    def send_host_log(self, level: str, message: str, host: str):
+        """Лог-событие, привязанное к конкретному серверу (для вкладок/фильтра)"""
+        self.send(
+            LogEntry(
+                level=level,
+                message=message,
+                source="ansible",
+                details={"host": host},
+            )
+        )
+
+    def send_servers_event(self, servers: list):
+        """Снимок статусов всех серверов (обновляет карточки машин на странице)"""
+        self.send(
+            LogEntry(
+                level="info",
+                message=f"Статусы серверов ({len(servers)})",
+                source="servers",
+                details={
+                    "servers": [
+                        {
+                            "host": s.get("host"),
+                            "port": s.get("port"),
+                            "user": s.get("user"),
+                            "status": s.get("status", "pending"),
+                        }
+                        for s in servers
+                    ]
+                },
+            )
+        )
+
     def complete(self, result: dict):
         """Событие завершения деплоя"""
         self.send(
