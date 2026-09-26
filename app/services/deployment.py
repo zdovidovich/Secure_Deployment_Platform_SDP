@@ -269,18 +269,22 @@ class DeploymentService:
                 event_callback=self._build_event_handler(),
             )
 
-            # Итоговые статусы по каждому серверу на основе статистики Ansible
+            # Итоговые статусы по каждому серверу на основе статистики Ansible.
+            # ansible-runner (Runner.stats) отдаёт ключи ok / dark / failures /
+            # processed, а не contacted / unreachable / failed — старые имена
+            # оставлены как fallback для совместимости.
             stats = ansible_result.stats or {}
-            contact_stats = stats.get("contacted", {})
-            unreachable_stats = stats.get("unreachable", {})
-            failed_stats = stats.get("failed", {})
+            contact_stats = stats.get("ok") or stats.get("contacted") or {}
+            unreachable_stats = stats.get("dark") or stats.get("unreachable") or {}
+            failed_stats = stats.get("failures") or stats.get("failed") or {}
+            processed_stats = stats.get("processed", {})
             for server in self.servers:
                 hostname = server["hostname"]
                 if hostname in unreachable_stats:
                     server["status"] = "unreachable"
                 elif hostname in failed_stats:
                     server["status"] = "failed"
-                elif hostname in contact_stats:
+                elif hostname in contact_stats or hostname in processed_stats:
                     server["status"] = "success"
                 elif server["status"] not in ("failed", "unreachable"):
                     server["status"] = "skipped"

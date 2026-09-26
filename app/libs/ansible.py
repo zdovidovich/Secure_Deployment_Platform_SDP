@@ -35,7 +35,7 @@ def make_host_event_callback(
     on_host_event: Callable[[str, str, dict], None]
 ) -> Callable[[dict], None]:
     """
-    Оборачивает колбэк «по хостам» в формат event_callback ansible-runner.
+    Оборачивает колбэк «по хостам» в формат event_handler ansible-runner.
 
     Args:
         on_host_event: функция (event_type, host, event_data), вызывается
@@ -50,11 +50,17 @@ def make_host_event_callback(
             event_type = event_data.get("event", "")
             host = _get_event_host(event_data)
             if not host:
-                return
+                return True
             on_host_event(event_type, host, event_data)
         except Exception:
             # Логи не должны ронять процесс деплоя
             pass
+        # ansible-runner трактует возвращаемое значение как "сохранять ли
+        # событие в job_events". Любое falsy-значение (в т.ч. None) отключает
+        # запись, из-за чего Runner.stats (читает job_events с диска) вернёт
+        # None и итоговые статусы серверов сломаются. Возвращаем True —
+        # это поведение ansible-runner по умолчанию.
+        return True
 
     return callback
 
@@ -66,7 +72,10 @@ def run_check(file_path_inventory, event_callback: Optional[Callable] = None):
     """
     kwargs = {}
     if event_callback is not None:
-        kwargs["event_callback"] = event_callback
+        # ansible-runner ожидает параметр event_handler (не event_callback):
+        # иначе неизвестный ключ утекает в RunnerConfig/BaseConfig и падает
+        # с "BaseConfig.__init__() got an unexpected keyword argument".
+        kwargs["event_handler"] = event_callback
     result = ansible_runner.run(
         private_data_dir=get_base_dir_ansible(),
         inventory=file_path_inventory,
@@ -108,8 +117,9 @@ def run_playbook(
     kwargs = {}
     if event_callback is not None:
         # Вызывается для каждого события Ansible (в т.ч. с привязкой к хосту),
-        # что позволяет стримить логи каждой машины в реальном времени
-        kwargs["event_callback"] = event_callback
+        # что позволяет стримить логи каждой машины в реальном времени.
+        # Важно: ansible-runner принимает именно event_handler.
+        kwargs["event_handler"] = event_callback
     result = ansible_runner.run(
         private_data_dir=get_base_dir_ansible(),
         inventory=file_path_inventory,
@@ -132,7 +142,8 @@ def run_role(
     extravars.update({"ansible_become": "True"})
     kwargs = {}
     if event_callback is not None:
-        kwargs["event_callback"] = event_callback
+        # ansible-runner принимает callback событий под именем event_handler
+        kwargs["event_handler"] = event_callback
     result = ansible_runner.run(
         private_data_dir=get_base_dir_ansible(),
         inventory=file_path_inventory,

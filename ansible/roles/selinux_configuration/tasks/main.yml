@@ -34,4 +34,4 @@
         proto: tcp
         setype: "{{ item.type }}"
       loop: "{{ selinux_configuration_rules }}"
-      when: selinux_state != 'disabled' and ansible_facts.selinux.status != "disabled"
+      when: selinux_configuration_state != 'disabled' and ansible_facts.selinux.status != "disabled"
