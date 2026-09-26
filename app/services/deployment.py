@@ -22,13 +22,36 @@ class DeploymentService:
         # Статусы по каждому серверу: {hostname: {"host", "user", "status", ...}}
         self.servers: list = []
         self._host_to_label: Dict[str, str] = {}
+        # True, если хотя бы одна строка вывода ansible ушла в консоль по ходу
+        # выполнения (см. _build_event_handler и fallback после запуска).
+        self._streamed_ansible_output = False
 
     def _build_event_handler(self):
         """
-        Возвращает callback для ansible-runner: каждое событие хоста
-        транслируется в SSE-поток с меткой конкретного сервера, поэтому
-        логи каждой машины видно в реальном времени.
+        Возвращает callback для ansible-runner: каждое событие Ansible
+        транслируется в SSE-поток настоящей строкой своего вывода (поле stdout
+        события — то же, что печатает ansible в терминале), поэтому консоль
+        показывает реальный ход настройки, а не служебные метки задач.
+
+        События конкретного хоста получают метку сервера, из-за чего работают
+        фильтр по серверам и подсветка ошибок.
         """
+
+        def _emit(text: str, level: str, host: Optional[str] = None):
+            """
+            Отправляет одну строку вывода ansible в консоль.
+
+            host — публичный адрес сервера: строки с ним получают метку сервера
+            (фильтр по серверам), строки без хоста идут как обычный вывод ansible.
+            """
+            line = self._replace_hostnames(text).strip()
+            if not line:
+                return
+            self._streamed_ansible_output = True
+            if host is None:
+                self.logger.ansible(line)
+            else:
+                self.logger.send_host_log(level, line, host=host)
 
         def on_host_event(event_type: str, host: str, event_data: dict):
             label = self._host_to_label.get(host)
@@ -36,43 +59,61 @@ class DeploymentService:
                 return
 
             entry = next((s for s in self.servers if s["hostname"] == host), None)
-            runner = event_data.get("event_data", {}).get("runner", {})
-            task = runner.get("task", "")
 
-            message = None
-            level = "debug"
-
+            # Статусы карточек серверов меняем сразу по ходу выполнения
             if event_type == "runner_on_start":
-                message = f"[{label}] STARTED :: {task}"
                 if entry is not None and entry["status"] == "pending":
                     entry["status"] = "running"
-            elif event_type == "runner_on_ok":
-                changed = bool(runner.get("res", {}).get("changed"))
-                message = f"[{label}] {'CHANGED' if changed else 'OK'} :: {task}"
-            elif event_type in ("runner_on_failed", "runner_on_error"):
-                res = runner.get("res", {})
-                msg = res.get("msg") or res.get("stderr") or "task failed"
-                message = f"[{label}] FAILED :: {str(msg).splitlines()[0][:300]}"
-                level = "error"
+            elif event_type in (
+                "runner_on_failed",
+                "runner_on_error",
+                "runner_on_async_failed",
+            ):
                 if entry is not None:
                     entry["status"] = "failed"
             elif event_type == "runner_on_unreachable":
-                msg = runner.get("res", {}).get("msg", "host unreachable")
-                message = f"[{label}] UNREACHABLE :: {str(msg).splitlines()[0][:300]}"
-                level = "error"
                 if entry is not None:
                     entry["status"] = "unreachable"
-            elif event_type == "verbose":
-                line = (event_data.get("stdout") or "").strip()
-                if line:
-                    message = f"[{label}] {line}"
 
-            if message and message.strip():
-                self.logger.send_host_log(level, message, host=label)
+            error_events = (
+                "runner_on_failed",
+                "runner_on_error",
+                "runner_on_unreachable",
+                "runner_on_async_failed",
+            )
+            level = "error" if event_type in error_events else "debug"
 
-        # make_host_event_callback фильтрует события без хоста и защищает
-        # от исключений внутри обработки — логи не уронят процесс деплоя
-        return make_host_event_callback(on_host_event)
+            lines = [
+                ln
+                for ln in (event_data.get("stdout") or "").splitlines()
+                if ln.strip()
+            ]
+            for index, line in enumerate(lines):
+                # Первую строку ошибки (fatal: ... / FAILED! => ...) подсвечиваем,
+                # остальные строки вывода модуля выводим как обычный лог
+                _emit(line, level if index == 0 else "debug", host=label)
+
+        def on_other_event(event_type: str, event_data: dict):
+            """События без хоста: баннеры PLAY/TASK, предупреждения, PLAY RECAP."""
+            for line in (event_data.get("stdout") or "").splitlines():
+                _emit(line, "debug")
+
+        # make_host_event_callback защищает вызовы от исключений — логи не
+        # должны уронить процесс деплоя
+        return make_host_event_callback(on_host_event, on_other_event)
+
+    def _replace_hostnames(self, text: str) -> str:
+        """
+        Внутренние имена хостов Ansible (server_1_ab12cd34) → публичные IP.
+
+        В строках вида «ok: [server_1_ab12cd34]» квадратные скобки убираем:
+        адрес сервера уже выводится меткой рядом со строкой.
+        """
+        for hostname, label in self._host_to_label.items():
+            if hostname in text:
+                text = text.replace(f"[{hostname}]", label)
+                text = text.replace(hostname, label)
+        return text
 
     def execute(self, form_data: dict, file_paths: dict) -> Dict:
         """
@@ -290,9 +331,15 @@ class DeploymentService:
                     server["status"] = "skipped"
             self.logger.send_servers_event(self.servers)
 
-            for line in ansible_result.stdout.read().split("\n"):
-                if line.strip():
-                    self.logger.ansible(line)
+            # Настоящий вывод ansible уже ушёл в консоль по ходу выполнения
+            # (см. _build_event_handler). Если события вообще не дошли —
+            # например, изменился контракт event_handler в ansible-runner —
+            # показываем артефакт целиком, чтобы вывод не потерялся.
+            if not self._streamed_ansible_output:
+                for line in ansible_result.stdout.read().split("\n"):
+                    line = self._replace_hostnames(line).strip()
+                    if line:
+                        self.logger.ansible(line)
 
             if ansible_result.status != "successful":
                 self.status = "error"

@@ -32,26 +32,32 @@ def _get_event_host(event_data: dict) -> Optional[str]:
 
 
 def make_host_event_callback(
-    on_host_event: Callable[[str, str, dict], None]
-) -> Callable[[dict], None]:
+    on_host_event: Callable[[str, str, dict], None],
+    on_other_event: Optional[Callable[[str, dict], None]] = None,
+) -> Callable[[dict], bool]:
     """
-    Оборачивает колбэк «по хостам» в формат event_handler ansible-runner.
+    Оборачивает колбэки в формат event_handler ansible-runner.
 
     Args:
         on_host_event: функция (event_type, host, event_data), вызывается
-                       только для событий, привязанных к конкретному хосту.
+                       для событий, привязанных к конкретному хосту.
+        on_other_event: необязательная функция (event_type, event_data) для
+                       событий без хоста: баннеры PLAY/TASK, предупреждения,
+                       PLAY RECAP и служебное событие EOF.
 
     Возвращает callback, который можно передать в run_playbook/run_full_configuring,
-    чтобы стримить логи каждой машины из inventory в реальном времени.
+    чтобы стримить настоящий вывод Ansible в реальном времени: в каждом событии
+    есть поле stdout — та самая строка, которую печатает ansible.
     """
 
-    def callback(event_data: dict):
+    def callback(event_data: dict) -> bool:
         try:
             event_type = event_data.get("event", "")
             host = _get_event_host(event_data)
-            if not host:
-                return True
-            on_host_event(event_type, host, event_data)
+            if host:
+                on_host_event(event_type, host, event_data)
+            elif on_other_event is not None:
+                on_other_event(event_type, event_data)
         except Exception:
             # Логи не должны ронять процесс деплоя
             pass

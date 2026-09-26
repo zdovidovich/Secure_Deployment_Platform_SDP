@@ -249,12 +249,17 @@
             font-weight: 600;
             margin-right: 0.5rem;
             text-transform: uppercase;
+            /* Фон по умолчанию: чтобы метка любого источника читалась,
+               даже если для него не задан свой цвет */
+            background: rgba(160, 160, 160, 0.18);
+            color: var(--text-muted);
         }
 
         .log-source.deployment { background: rgba(59, 130, 246, 0.2); color: var(--info); }
         .log-source.hadolint { background: rgba(212, 175, 55, 0.2); color: var(--gold-light); }
         .log-source.trivy { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
         .log-source.ansible { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .log-source.servers { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
 
         .log-message { color: var(--text); }
 
