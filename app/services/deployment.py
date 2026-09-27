@@ -19,11 +19,8 @@ class DeploymentService:
         self.logger = SSEBroadcaster(session_id)
         self.status = "pending"  # pending, running, success, error
         self.result: Optional[Dict] = None
-        # Статусы по каждому серверу: {hostname: {"host", "user", "status", ...}}
         self.servers: list = []
         self._host_to_label: Dict[str, str] = {}
-        # True, если хотя бы одна строка вывода ansible ушла в консоль по ходу
-        # выполнения (см. _build_event_handler и fallback после запуска).
         self._streamed_ansible_output = False
 
     def _build_event_handler(self):
@@ -60,7 +57,6 @@ class DeploymentService:
 
             entry = next((s for s in self.servers if s["hostname"] == host), None)
 
-            # Статусы карточек серверов меняем сразу по ходу выполнения
             if event_type == "runner_on_start":
                 if entry is not None and entry["status"] == "pending":
                     entry["status"] = "running"
@@ -89,8 +85,6 @@ class DeploymentService:
                 if ln.strip()
             ]
             for index, line in enumerate(lines):
-                # Первую строку ошибки (fatal: ... / FAILED! => ...) подсвечиваем,
-                # остальные строки вывода модуля выводим как обычный лог
                 _emit(line, level if index == 0 else "debug", host=label)
 
         def on_other_event(event_type: str, event_data: dict):
@@ -98,8 +92,6 @@ class DeploymentService:
             for line in (event_data.get("stdout") or "").splitlines():
                 _emit(line, "debug")
 
-        # make_host_event_callback защищает вызовы от исключений — логи не
-        # должны уронить процесс деплоя
         return make_host_event_callback(on_host_event, on_other_event)
 
     def _replace_hostnames(self, text: str) -> str:
@@ -169,9 +161,6 @@ class DeploymentService:
                     self.logger.error(f"Hadolint ошибка: {hadolint_result['error']}")
                     return self.result
 
-            # form_data может приходить как из API (значения — списки,
-            # т.к. поля повторяются для нескольких серверов), так и из
-            # обычных форм (строки) — нормализуем к скалярному виду
             def _scalar(value, default=None):
                 if isinstance(value, (list, tuple)):
                     value = value[0] if len(value) > 0 else None
@@ -230,7 +219,6 @@ class DeploymentService:
                 ssh_key_path,
             )
 
-            # Маппинг внутренних имён хостов Ansible в публичные IP-адреса
             self._host_to_label = {
                 hostname: server["host"]
                 for hostname, server in zip(hostnames, servers)
@@ -252,8 +240,6 @@ class DeploymentService:
             self.logger.send_servers_event(self.servers)
 
             self.logger.info("Запуск Ansible playbook...")
-            # Порт по умолчанию берём из первого сервера (в валидированных
-            # данных ansible_port — скаляр, даже если серверов несколько)
             default_ssh_port = _scalar(validated_data.get("ansible_port"), 22)
             ssh_new_port = _scalar(validated_data.get("ssh_hardening_port")) or default_ssh_port
 
@@ -310,10 +296,6 @@ class DeploymentService:
                 event_callback=self._build_event_handler(),
             )
 
-            # Итоговые статусы по каждому серверу на основе статистики Ansible.
-            # ansible-runner (Runner.stats) отдаёт ключи ok / dark / failures /
-            # processed, а не contacted / unreachable / failed — старые имена
-            # оставлены как fallback для совместимости.
             stats = ansible_result.stats or {}
             contact_stats = stats.get("ok") or stats.get("contacted") or {}
             unreachable_stats = stats.get("dark") or stats.get("unreachable") or {}
@@ -331,10 +313,6 @@ class DeploymentService:
                     server["status"] = "skipped"
             self.logger.send_servers_event(self.servers)
 
-            # Настоящий вывод ansible уже ушёл в консоль по ходу выполнения
-            # (см. _build_event_handler). Если события вообще не дошли —
-            # например, изменился контракт event_handler в ansible-runner —
-            # показываем артефакт целиком, чтобы вывод не потерялся.
             if not self._streamed_ansible_output:
                 for line in ansible_result.stdout.read().split("\n"):
                     line = self._replace_hostnames(line).strip()

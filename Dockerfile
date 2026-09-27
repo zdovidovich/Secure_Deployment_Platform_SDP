@@ -3,8 +3,9 @@ FROM python:3.13.13-alpine
 WORKDIR /SDP
 
 RUN apk update && apk upgrade
-RUN apk add --no-cache ansible=13.0.0-r0
-RUN apk add openssh-client=10.2_p1-r0
+RUN apk add --no-cache ansible=13.0.0-r0 openssh-client=10.2_p1-r0
+RUN rm -rf /var/lib/apk /etc/apk/cache
+
 
 COPY ./app/requirements.txt /SDP/app/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip==26.0.1 && \

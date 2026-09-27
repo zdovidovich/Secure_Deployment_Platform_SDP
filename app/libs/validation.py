@@ -36,10 +36,6 @@ class ValidationRule:
 
 
 DEPLOY_FORM_RULES: Dict[str, ValidationRule] = {
-    # ansible_host / ansible_port / ansible_user теперь задаются списком
-    # серверов и валидируются через parse_servers_from_form().
-    # Правила ниже оставлены (необязательные) для обратной совместимости
-    # со старыми вызовами API с одиночным сервером.
     "ansible_host": ValidationRule(
         pattern=r"^(\d{1,3}\.){3}\d{1,3}$",
         error_msg="Неверный формат IP адреса",
@@ -197,7 +193,6 @@ def parse_servers_from_form(form_data: dict) -> Tuple[List[dict], List[str]]:
     ports = _get_field(form_data, "ansible_port")
     users = _get_field(form_data, "ansible_user")
 
-    # Убираем полностью пустые записи (пустые строки в списке)
     entries = list(
         zip(
             hosts,
@@ -333,10 +328,6 @@ def validate_form_data(form_data: dict) -> Tuple[bool, List[str], dict]:
     for field_name, rule in DEPLOY_FORM_RULES.items():
         if field_name in ["app_deploy_volumes", "app_deploy_envs"]:
             continue
-
-        # Значения могут приходить списками (повторяющиеся поля формы —
-        # несколько серверов или дубликаты полей). Для скалярных правил
-        # берём первое непустое значение.
         raw_value = form_data.get(field_name, "")
         value_str = _scalar_form_value(raw_value)
 
@@ -347,8 +338,6 @@ def validate_form_data(form_data: dict) -> Tuple[bool, List[str], dict]:
         elif processed_value is not None:
             validated_data[field_name] = processed_value
 
-    # Многострочные поля могут прийти списком (повторяющиеся textarea) —
-    # склеиваем элементы в один текст построчно
     def _multiline(name: str) -> str:
         return "\n".join(_as_list(form_data.get(name)))
 

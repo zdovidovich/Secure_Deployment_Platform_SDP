@@ -4,8 +4,6 @@ from typing import Callable, Optional
 
 from libs.utils import get_project_root
 
-# Типы событий Ansible Runner, которые относятся к конкретному хосту.
-# Используются потребителями (например, DeploymentService) для фильтрации.
 HOST_EVENT_TYPES = {
     "runner_on_start",
     "runner_on_ok",
@@ -59,13 +57,7 @@ def make_host_event_callback(
             elif on_other_event is not None:
                 on_other_event(event_type, event_data)
         except Exception:
-            # Логи не должны ронять процесс деплоя
             pass
-        # ansible-runner трактует возвращаемое значение как "сохранять ли
-        # событие в job_events". Любое falsy-значение (в т.ч. None) отключает
-        # запись, из-за чего Runner.stats (читает job_events с диска) вернёт
-        # None и итоговые статусы серверов сломаются. Возвращаем True —
-        # это поведение ansible-runner по умолчанию.
         return True
 
     return callback
@@ -78,9 +70,6 @@ def run_check(file_path_inventory, event_callback: Optional[Callable] = None):
     """
     kwargs = {}
     if event_callback is not None:
-        # ansible-runner ожидает параметр event_handler (не event_callback):
-        # иначе неизвестный ключ утекает в RunnerConfig/BaseConfig и падает
-        # с "BaseConfig.__init__() got an unexpected keyword argument".
         kwargs["event_handler"] = event_callback
     result = ansible_runner.run(
         private_data_dir=get_base_dir_ansible(),
@@ -122,9 +111,6 @@ def run_playbook(
     extravars.update({"ansible_become": "True"})
     kwargs = {}
     if event_callback is not None:
-        # Вызывается для каждого события Ansible (в т.ч. с привязкой к хосту),
-        # что позволяет стримить логи каждой машины в реальном времени.
-        # Важно: ansible-runner принимает именно event_handler.
         kwargs["event_handler"] = event_callback
     result = ansible_runner.run(
         private_data_dir=get_base_dir_ansible(),
@@ -148,7 +134,6 @@ def run_role(
     extravars.update({"ansible_become": "True"})
     kwargs = {}
     if event_callback is not None:
-        # ansible-runner принимает callback событий под именем event_handler
         kwargs["event_handler"] = event_callback
     result = ansible_runner.run(
         private_data_dir=get_base_dir_ansible(),
