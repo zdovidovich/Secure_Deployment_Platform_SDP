@@ -127,6 +127,87 @@ class DeploymentService:
                 text = text.replace(hostname, label)
         return text
 
+    # ------------------------------------------------------------------
+    # Telegram-уведомления
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _extract_telegram_chat_id(form_data: dict) -> Optional[str]:
+        """Достаёт chat_id из данных формы (повторяющиеся поля — списки)."""
+        raw = None
+        if hasattr(form_data, "getlist"):
+            values = form_data.getlist("telegram_chat_id")
+            raw = values[0] if values else None
+        else:
+            raw = form_data.get("telegram_chat_id")
+        if isinstance(raw, (list, tuple)):
+            raw = raw[0] if raw else None
+        chat_id = str(raw or "").strip()
+        return chat_id or None
+
+    def _send_telegram(self, text: str, chat_id: str) -> None:
+        """Безопасная отправка: ошибки Telegram не должны влиять на деплой."""
+        if self._telegram_notifier is None or not chat_id:
+            return
+        try:
+            with self._telegram_lock:
+                self._telegram_notifier.send_async(chat_id, text)
+        except Exception as exc:  # noqa: BLE001
+            self.logger.info(f"Telegram: уведомление не отправлено: {exc}")
+
+    def _send_telegram_started(
+        self, chat_id: str, *, deployment_id: str, server_count: int
+    ) -> None:
+        self._send_telegram(
+            "<b>🚀 Начался деплой</b>\n"
+            f"<b>ID:</b> <code>{deployment_id}</code>",
+            chat_id,
+        )
+
+    def _send_telegram_success(
+        self,
+        chat_id: str,
+        *,
+        deployment_id: str,
+        server_count: int,
+        message: Optional[str] = None,
+    ) -> None:
+        body = (
+            "<b>✅ Деплой успешно завершён</b>\n"
+            f"<b>ID:</b> <code>{deployment_id}</code>\n"
+            f"<b>Серверов:</b> <code>{server_count}</code>"
+        )
+        if message:
+            body += "\n" + message
+        self._send_telegram(body, chat_id)
+
+    def _send_telegram_failed(
+        self,
+        chat_id: str,
+        *,
+        deployment_id: str,
+        error: str,
+        server_count: int = 0,
+    ) -> None:
+        body = (
+            "<b>❌ Деплой не удался</b>\n"
+            f"<b>ID:</b> <code>{deployment_id}</code>\n"
+            f"<b>Серверов:</b> <code>{server_count}</code>"
+        )
+        if error:
+            body += f"\n<b>Причина:</b>\n<code>{error}</code>"
+        self._send_telegram(body, chat_id)
+
+    def _send_telegram_error(
+        self, chat_id: str, *, deployment_id: str, error: str
+    ) -> None:
+        body = (
+            "<b>💥 Критическая ошибка деплоя</b>\n"
+            f"<b>ID:</b> <code>{deployment_id}</code>\n"
+            f"<code>{error}</code>"
+        )
+        self._send_telegram(body, chat_id)
+
     def execute(self, form_data: dict, file_paths: dict) -> Dict:
         """
         Главный метод: выполняет весь пайплайн деплоя.
@@ -138,11 +219,18 @@ class DeploymentService:
         """
         inventory_path = None
         telegram_chat_id = None
-        telegram_enabled = False
 
         try:
             self.status = "running"
             self.logger.info("Запуск процесса деплоя...")
+
+            telegram_chat_id = self._extract_telegram_chat_id(form_data)
+            if telegram_chat_id:
+                self._send_telegram_started(
+                    telegram_chat_id,
+                    deployment_id=self.session_id,
+                    server_count=len(self.servers),
+                )
 
             self.logger.info("Загруженные файлы готовы")
             ssh_key_path = file_paths.get("ssh_key")
@@ -351,7 +439,7 @@ class DeploymentService:
                 }
                 self.logger.error("Ansible завершился с ошибкой")
 
-                telegram_chat_id = form_data.get("telegram_chat_id") or self._get_telegram_chat_id_from_store()
+                telegram_chat_id = self._extract_telegram_chat_id(form_data)
                 if telegram_chat_id:
                     self._send_telegram_failed(
                         telegram_chat_id,
@@ -366,7 +454,7 @@ class DeploymentService:
                     "Возможно были изменены настройки безопасности на RHEL-системах: для применения SELinux может потребоваться перезагрузка."
                 )
 
-                telegram_chat_id = form_data.get("telegram_chat_id") or self._get_telegram_chat_id_from_store()
+                telegram_chat_id = self._extract_telegram_chat_id(form_data)
                 if telegram_chat_id:
                     self._send_telegram_success(
                         telegram_chat_id,
@@ -389,7 +477,7 @@ class DeploymentService:
             self.result = {"error": f"Unexpected error: {str(exc)}"}
             self.logger.error(f"Критическая ошибка: {str(exc)}")
 
-            telegram_chat_id = form_data.get("telegram_chat_id") or self._get_telegram_chat_id_from_store()
+            telegram_chat_id = self._extract_telegram_chat_id(form_data)
             if telegram_chat_id:
                 self._send_telegram_error(
                     telegram_chat_id,

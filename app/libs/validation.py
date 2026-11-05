@@ -291,7 +291,31 @@ def validate_all_data(
         is_valid = False
         errors.append("ssh_key: Неверный формат приватного SSH-ключа")
 
+    telegram_errors = validate_telegram_chat_id(form_data)
+    if telegram_errors:
+        is_valid = False
+        errors.extend(telegram_errors)
+
     return is_valid, errors, validated_data
+
+
+def validate_telegram_chat_id(form_data: dict) -> List[str]:
+    """
+    Непязательное поле telegram_chat_id: если заполнено — только числовой
+    ID чата (могут быть отрицательными — это группы).
+    """
+    raw = form_data.get("telegram_chat_id", "")
+    if isinstance(raw, (list, tuple)):
+        raw = raw[0] if raw else ""
+    value = str(raw or "").strip()
+    if not value:
+        return []
+    if not re.fullmatch(r"-?\d{1,20}", value):
+        return [
+            "telegram_chat_id: Должен быть числовым ID чата Telegram "
+            "(узнать свой можно у @userinfobot)"
+        ]
+    return []
 
 
 def validate_multiline_field(

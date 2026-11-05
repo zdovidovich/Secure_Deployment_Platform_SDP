@@ -49,6 +49,14 @@
                             </label>
                             <div class="file-name" id="ssh_key_name"></div>
                         </div>
+                        <div class="form-group">
+                            <label for="telegram_chat_id">Telegram chat id (уведомления о деплое)</label>
+                            <input type="text" id="telegram_chat_id" name="telegram_chat_id"
+                                   inputmode="numeric" placeholder="например: 123456789" autocomplete="off">
+                            <div class="hint">Ваш ID в Telegram (узнать можно у @userinfobot). На этот чат
+                                придут уведомления о старте, успехе и ошибках деплоя. Нужен запущенный бот
+                                с заданным TELEGRAM_BOT_TOKEN на сервере.</div>
+                        </div>
                     </div>
                 </div>
 
@@ -303,6 +311,27 @@
         setupFileInput('ssh_key', 'ssh_key_name');
         setupFileInput('docker_image', 'docker_image_name');
         setupFileInput('dockerfile', 'dockerfile_name');
+
+        // Telegram chat id: запоминаем между запусками в localStorage
+        const telegramInput = document.getElementById('telegram_chat_id');
+        if (telegramInput) {
+            try {
+                const savedChatId = localStorage.getItem('telegram_chat_id');
+                if (savedChatId && !telegramInput.value) {
+                    telegramInput.value = savedChatId;
+                }
+                telegramInput.addEventListener('change', function () {
+                    const value = this.value.trim();
+                    if (value) {
+                        localStorage.setItem('telegram_chat_id', value);
+                    } else {
+                        localStorage.removeItem('telegram_chat_id');
+                    }
+                });
+            } catch (err) {
+                /* localStorage недоступен — поле просто не будет запоминаться */
+            }
+        }
 
         document.getElementById('deployForm').addEventListener('submit', async function (e) {
             e.preventDefault();
