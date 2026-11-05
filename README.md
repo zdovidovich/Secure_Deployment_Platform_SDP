@@ -60,6 +60,22 @@ Optional:
 
 If `SDP_API_KEY` is set in the environment, API requests must include header `X-API-Key: <value>`.
 
+### Telegram notifications
+
+Deployments can send progress notifications (start / success / failure / critical error)
+to a Telegram chat:
+
+1. Create a bot via @BotFather and set its token in the environment:
+   `TELEGRAM_BOT_TOKEN=<token>` (for Docker: `docker run -e TELEGRAM_BOT_TOKEN=... -p 8080:8080 -d f0ra1n/sdp`).
+2. Find out your numeric chat id (for example, via @userinfobot).
+3. Enter it into the «Telegram chat id» field of the main form (it is remembered in the
+   browser via localStorage) or pass it as the `telegram_chat_id` form field to
+   `POST /api/v1/deployments`.
+
+Notifications are optional: if `TELEGRAM_BOT_TOKEN` is not set or the chat id is empty,
+deployments run without them. The bot must be able to write to that chat
+(the user has to start a conversation with the bot first).
+
 
 2. Managed Node
 
