@@ -1,11 +1,23 @@
+from threading import Lock
 from typing import Dict, Optional
 
 from libs.ansible import make_host_event_callback, run_full_configuring
 from libs.hadolint import format_hadolint_result, scan_dockerfile
+from libs.telegram_notifier import (
+    notify_deploy_error,
+    notify_deploy_failed,
+    notify_deploy_started,
+    notify_deploy_success,
+)
 from libs.temp_files import cleanup_specific_files, create_inventory_temp_file
 from libs.trivy import format_trivy_result, scan_image
 from libs.validation import validate_all_data
 from sse.broadcaster import SSEBroadcaster
+
+try:
+    from libs.telegram_notifier import TelegramNotifier
+except ImportError:  # pragma: no cover - fallback если зависимость не установлена
+    TelegramNotifier = None  # type: ignore[assignment]
 
 
 class DeploymentService:
@@ -22,6 +34,14 @@ class DeploymentService:
         self.servers: list = []
         self._host_to_label: Dict[str, str] = {}
         self._streamed_ansible_output = False
+        self._telegram_lock = Lock()
+        self._telegram_notifier = None
+
+        if TelegramNotifier is not None:
+            try:
+                self._telegram_notifier = TelegramNotifier()
+            except Exception:
+                self._telegram_notifier = None
 
     def _build_event_handler(self):
         """
@@ -117,6 +137,8 @@ class DeploymentService:
                         {'ssh_key': '/tmp/ssh_key_...', 'docker_image': '/tmp/docker_image_...'}
         """
         inventory_path = None
+        telegram_chat_id = None
+        telegram_enabled = False
 
         try:
             self.status = "running"
@@ -328,12 +350,31 @@ class DeploymentService:
                     "stderr": ansible_result.stderr.read(),
                 }
                 self.logger.error("Ansible завершился с ошибкой")
+
+                telegram_chat_id = form_data.get("telegram_chat_id") or self._get_telegram_chat_id_from_store()
+                if telegram_chat_id:
+                    self._send_telegram_failed(
+                        telegram_chat_id,
+                        deployment_id=self.session_id,
+                        error="Ansible playbook failed",
+                        server_count=len(self.servers),
+                    )
             else:
                 self.status = "success"
                 self.logger.info("Деплой успешно завершён!")
                 self.logger.info(
                     "Возможно были изменены настройки безопасности на RHEL-системах: для применения SELinux может потребоваться перезагрузка."
                 )
+
+                telegram_chat_id = form_data.get("telegram_chat_id") or self._get_telegram_chat_id_from_store()
+                if telegram_chat_id:
+                    self._send_telegram_success(
+                        telegram_chat_id,
+                        deployment_id=self.session_id,
+                        server_count=len(self.servers),
+                        message="Деплой успешно завершён!",
+                    )
+
                 self.result = {
                     "success": True,
                     "stats": ansible_result.stats,
@@ -347,6 +388,15 @@ class DeploymentService:
             self.status = "error"
             self.result = {"error": f"Unexpected error: {str(exc)}"}
             self.logger.error(f"Критическая ошибка: {str(exc)}")
+
+            telegram_chat_id = form_data.get("telegram_chat_id") or self._get_telegram_chat_id_from_store()
+            if telegram_chat_id:
+                self._send_telegram_error(
+                    telegram_chat_id,
+                    deployment_id=self.session_id,
+                    error=f"Критическая ошибка: {exc}",
+                )
+
             return self.result
         finally:
             self.logger.info("Очистка временных файлов...")
