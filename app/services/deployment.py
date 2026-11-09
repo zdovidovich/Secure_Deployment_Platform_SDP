@@ -422,13 +422,11 @@ class DeploymentService:
                 elif server["status"] not in ("failed", "unreachable"):
                     server["status"] = "skipped"
             self.logger.send_servers_event(self.servers)
-
             if not self._streamed_ansible_output:
                 for line in ansible_result.stdout.read().split("\n"):
                     line = self._replace_hostnames(line).strip()
                     if line:
                         self.logger.ansible(line)
-
             if ansible_result.status != "successful":
                 self.status = "error"
                 self.result = {
@@ -438,7 +436,6 @@ class DeploymentService:
                     "stderr": ansible_result.stderr.read(),
                 }
                 self.logger.error("Ansible завершился с ошибкой")
-
                 telegram_chat_id = self._extract_telegram_chat_id(form_data)
                 if telegram_chat_id:
                     self._send_telegram_failed(
@@ -453,7 +450,6 @@ class DeploymentService:
                 self.logger.info(
                     "Возможно были изменены настройки безопасности на RHEL-системах: для применения SELinux может потребоваться перезагрузка."
                 )
-
                 telegram_chat_id = self._extract_telegram_chat_id(form_data)
                 if telegram_chat_id:
                     self._send_telegram_success(
