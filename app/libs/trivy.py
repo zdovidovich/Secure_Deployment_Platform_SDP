@@ -4,31 +4,40 @@ import os
 TRIVY_PATH = os.getenv("TRIVY_PATH", "trivy")
 
 
-def scan_image(image_path: str, fail_on_severity: str = "HIGH") -> dict:
+def scan_image(
+    image_path: str, fail_on_severity: str = "HIGH", is_tar: bool = True
+) -> dict:
     """
     Запускает Trivy для сканирования Docker-образа.
 
     Args:
-        image_path: Путь к образу (.tar файл)
+        image_path: Путь к образу (.tar файл) или имя образа в реестре
         fail_on_severity: Порог блокировки ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'NONE')
+        is_tar: Если True — использовать --input (для tar файлов), если False — имя образа
 
     Returns:
         dict с результатами сканирования и решением о блокировке
     """
     SEVERITY_ORDER = ["UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL"]
 
-    success, output, error = run_binary_scanner(
-        binary_path=TRIVY_PATH,
-        args=[
-            "image",
-            "--input",
-            image_path,
+    args = ["image"]
+    if is_tar:
+        args.extend(["--input", image_path])
+    else:
+        args.append(image_path)
+    args.extend(
+        [
             "--format",
             "json",
             "--exit-code",
             "0",
             "--no-progress",
-        ],
+        ]
+    )
+
+    success, output, error = run_binary_scanner(
+        binary_path=TRIVY_PATH,
+        args=args,
         parse_json=True,
     )
 

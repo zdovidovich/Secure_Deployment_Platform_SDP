@@ -77,6 +77,26 @@ DEPLOY_FORM_RULES: Dict[str, ValidationRule] = {
         error_msg="Неверный формат имени образа",
         required=True,
     ),
+    "docker_image_source": ValidationRule(
+        pattern=r"^(tar|registry)$",
+        error_msg="Источник образа должен быть tar или registry",
+        required=True,
+    ),
+    "registry_url": ValidationRule(
+        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_.:/-]*$",
+        error_msg="Неверный формат URL registry",
+        required=False,
+    ),
+    "registry_username": ValidationRule(
+        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_.:/-]*$",
+        error_msg="Неверный формат имени пользователя registry",
+        required=False,
+    ),
+    "registry_password": ValidationRule(
+        pattern=r"^.{0,200}$",
+        error_msg="Неверный формат пароля registry",
+        required=False,
+    ),
     "app_deploy_volumes": ValidationRule(
         pattern=r"^.*:.*$",
         error_msg="Volume должен быть в формате host:container",
@@ -145,8 +165,18 @@ def validate_all_data(
     Полная валидация всех данных.
     Возвращает (success, errors, validated_data)
     """
-    if not file_path_image or not file_path_private_ssh_key:
-        return False, ["Не загружены файлы (образ или ключ)"], {}
+    if not file_path_private_ssh_key:
+        return False, ["Не загружен приватный SSH-ключ"], {}
+
+    image_source = form_data.get("docker_image_source", "tar")
+
+    if image_source == "tar":
+        if not file_path_image:
+            return False, ["Не загружен файл Docker образа (.tar)"], {}
+    elif image_source == "registry":
+        if not form_data.get("registry_url"):
+            return False, ["Не указан URL registry"], {}
+
     is_valid, errors, validated_data = validate_form_data(form_data)
 
     for field, min_val, max_val in [
@@ -171,9 +201,10 @@ def validate_all_data(
         if "\n" in regex or "\r" in regex or "\x00" in regex:
             errors.append("app_fail2ban_regex: Содержит недопустимые символы")
 
-    if not validate_tar_archive(file_path_image):
-        is_valid = False
-        errors.append("docker_image: Неверный формат Docker образа (не TAR)")
+    if image_source == "tar":
+        if not validate_tar_archive(file_path_image):
+            is_valid = False
+            errors.append("docker_image: Неверный формат Docker образа (не TAR)")
 
     if not validate_ssh_private_key(file_path_private_ssh_key):
         is_valid = False

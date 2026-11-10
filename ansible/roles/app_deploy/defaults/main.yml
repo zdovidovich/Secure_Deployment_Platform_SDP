@@ -11,3 +11,7 @@ app_deploy_volumes: []
 app_deploy_ro_fs: false
 app_deploy_cpus: null
 app_deploy_memory: null
+docker_image_source: "tar"
+registry_url: ""
+registry_username: ""
+registry_password: ""

@@ -25,10 +25,20 @@
       ansible.builtin.assert:
         that:
           - app_deploy_image_name != ""
-          - app_deploy_image_path != ""
           - app_deploy_container_name != ""
+          - (docker_image_source == "tar" and app_deploy_image_path != "") or (docker_image_source == "registry")
         fail_msg: Not enough given parameters to start role
         success_msg: Parameters are good
+
+    - name: Docker login to registry (if credentials provided)
+      community.docker.docker_login:
+        registry: "{{ registry_url }}"
+        username: "{{ registry_username }}"
+        password: "{{ registry_password }}"
+      when:
+        - docker_image_source == "registry"
+        - registry_username | length > 0
+        - registry_password | length > 0
 
     - name: Copy image archive to host
       ansible.builtin.copy:
@@ -38,12 +48,14 @@
         group: root
         mode: "0700"
       register: app_deploy_result_copying
+      when: docker_image_source == "tar"
 
     - name: Load image archive to docker
       community.docker.docker_image_load:
         path: "{{ app_deploy_result_copying.dest }}"
       async: 3600
       poll: 20
+      when: docker_image_source == "tar"
 
     - name: Start container
       docker_container:
@@ -61,3 +73,4 @@
       ansible.builtin.file:
         path: "{{ app_deploy_result_copying.dest }}"
         state: absent
+      when: app_deploy_result_copying is defined and app_deploy_result_copying.dest is defined

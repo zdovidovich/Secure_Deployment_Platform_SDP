@@ -165,38 +165,70 @@
                 <div class="form-section">
                     <h3>Docker образ</h3>
                     <div class="form-group full-width">
-                        <label for="docker_image">Файл образа (.tar) <span class="required">*</span></label>
-                        <label class="file-upload" for="docker_image">
-                            <input type="file" id="docker_image" name="docker_image" accept=".tar" required>
-                            <span class="file-upload-label">
-                                <span>Выберите Docker image tar</span>
-                            </span>
-                        </label>
-                        <div class="file-name" id="docker_image_name"></div>
-                        <div class="hint">Создайте через: <code>docker save -o image.tar name:tag</code></div>
-                        <div class="form-group">
-                            <label>Опции сканирования</label>
-                            <div class="checkbox-group">
-                                <div class="checkbox-item">
-                                    <input type="checkbox" id="enable_trivy" name="enable_trivy" checked>
-                                    <label for="enable_trivy">Сканирование образа с помощью Trivy</label>
-                                </div>
-                            </div>
+                        <label for="docker_image_source">Источник образа <span class="required">*</span></label>
+                        <select id="docker_image_source" name="docker_image_source" class="form-select-small" required>
+                            <option value="tar">Загрузить tar-архив</option>
+                            <option value="registry">Из Docker Registry</option>
+                        </select>
+                    </div>
 
-                            <div class="form-subgroup" id="trivy-threshold-group"
-                                style="margin-top: 1rem; padding-left: 1.5rem; border-left: 2px solid var(--border);">
-                                <label for="trivy_fail_on">Блокировать деплой при уязвимостях уровня:</label>
-                                <select id="trivy_fail_on" name="trivy_fail_on" class="form-select-small">
-                                    <option value="CRITICAL">CRITICAL только</option>
-                                    <option value="HIGH" selected>HIGH и выше (рекомендуется)</option>
-                                    <option value="MEDIUM">MEDIUM и выше</option>
-                                    <option value="LOW">LOW и выше (строгий режим)</option>
-                                    <option value="NONE">Никогда не блокировать (только отчёт)</option>
-                                </select>
-                                <div class="hint" style="margin-top: 0.5rem;">
-                                    Деплой остановится, если найдены уязвимости выбранного или более высокого
-                                    уровня.<br>
-                                    Уровни: <code>CRITICAL &gt; HIGH &gt; MEDIUM &gt; LOW &gt; UNKNOWN</code>
+                    <div id="docker-image-tar-group">
+                        <div class="form-group full-width">
+                            <label for="docker_image">Файл образа (.tar) <span class="required">*</span></label>
+                            <label class="file-upload" for="docker_image">
+                                <input type="file" id="docker_image" name="docker_image" accept=".tar" required>
+                                <span class="file-upload-label">
+                                    <span>Выберите Docker image tar</span>
+                                </span>
+                            </label>
+                            <div class="file-name" id="docker_image_name"></div>
+                            <div class="hint">Создайте через: <code>docker save -o image.tar name:tag</code></div>
+                        </div>
+                    </div>
+
+                    <div id="docker-image-registry-group" style="display: none;">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="registry_url">Registry URL <span class="required">*</span></label>
+                                <input type="text" id="registry_url" name="registry_url" placeholder="docker.io" required>
+                                <div class="hint">Например: docker.io, ghcr.io, registry.gitlab.com</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="registry_username">Имя пользователя Registry</label>
+                                <input type="text" id="registry_username" name="registry_username" placeholder="registry user">
+                                <div class="hint">Оставьте пустым для публичного реестра</div>
+                            </div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="registry_password">Пароль Registry</label>
+                            <input type="password" id="registry_password" name="registry_password" placeholder="registry password">
+                            <div class="hint">Оставьте пустым для публичного реестра</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Опции сканирования</label>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="enable_trivy" name="enable_trivy" checked>
+                                <label for="enable_trivy">Сканирование образа с помощью Trivy</label>
+                            </div>
+                        </div>
+
+                        <div class="form-subgroup" id="trivy-threshold-group"
+                            style="margin-top: 1rem; padding-left: 1.5rem; border-left: 2px solid var(--border);">
+                            <label for="trivy_fail_on">Блокировать деплой при уязвимостях уровня:</label>
+                            <select id="trivy_fail_on" name="trivy_fail_on" class="form-select-small">
+                                <option value="CRITICAL">CRITICAL только</option>
+                                <option value="HIGH" selected>HIGH и выше (рекомендуется)</option>
+                                <option value="MEDIUM">MEDIUM и выше</option>
+                                <option value="LOW">LOW и выше (строгий режим)</option>
+                                <option value="NONE">Никогда не блокировать (только отчёт)</option>
+                            </select>
+                            <div class="hint" style="margin-top: 0.5rem;">
+                                Деплой остановится, если найдены уязвимости выбранного или более высокого
+                                уровня.<br>
+                                Уровни: <code>CRITICAL &gt; HIGH &gt; MEDIUM &gt; LOW &gt; UNKNOWN</code>
                                 </div>
                             </div>
                         </div>
@@ -311,6 +343,25 @@
         setupFileInput('docker_image', 'docker_image_name');
         setupFileInput('dockerfile', 'dockerfile_name');
 
+        function updateDockerImageSourceVisibility() {
+            const source = document.getElementById('docker_image_source').value;
+            const tarGroup = document.getElementById('docker-image-tar-group');
+            const registryGroup = document.getElementById('docker-image-registry-group');
+            const dockerImageInput = document.getElementById('docker_image');
+
+            if (source === 'tar') {
+                tarGroup.style.display = 'block';
+                registryGroup.style.display = 'none';
+                dockerImageInput.required = true;
+            } else {
+                tarGroup.style.display = 'none';
+                registryGroup.style.display = 'block';
+                dockerImageInput.required = false;
+            }
+        }
+
+        document.getElementById('docker_image_source').addEventListener('change', updateDockerImageSourceVisibility);
+
         document.getElementById('deployForm').addEventListener('submit', async function (e) {
             e.preventDefault();
 
@@ -353,6 +404,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            updateDockerImageSourceVisibility();
             updateTrivyThresholdVisibility();
 
             document.getElementById('enable_trivy').addEventListener('change', updateTrivyThresholdVisibility);

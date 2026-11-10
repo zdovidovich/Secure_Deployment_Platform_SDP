@@ -37,8 +37,8 @@ def start_deployment():
     3. Запуск в фоне
     4. Редирект на страницу статуса
     """
-    if not request.files.get("ssh_key") or not request.files.get("docker_image"):
-        return jsonify({"error": "Требуется загрузка SSH-ключа и Docker-образа"}), 400
+    if not request.files.get("ssh_key"):
+        return jsonify({"error": "Требуется загрузка SSH-ключа"}), 400
 
     form_data = request.form.to_dict()
 
@@ -46,10 +46,13 @@ def start_deployment():
 
     file_paths = {
         "ssh_key": save_temp_file(request.files.get("ssh_key"), "ssh_key_"),
-        "docker_image": save_temp_file(
-            request.files.get("docker_image"), "docker_image_"
-        ),
     }
+
+    docker_image_file = request.files.get("docker_image")
+    if docker_image_file and docker_image_file.filename:
+        file_paths["docker_image"] = save_temp_file(
+            docker_image_file, "docker_image_"
+        )
 
     if request.files.get("dockerfile") and request.files["dockerfile"].filename:
         file_paths["dockerfile"] = save_temp_file(

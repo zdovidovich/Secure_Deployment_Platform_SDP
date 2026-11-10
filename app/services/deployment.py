@@ -1,3 +1,4 @@
+import subprocess
 from typing import Dict, Optional
 
 from libs.ansible import run_full_configuring
@@ -74,13 +75,87 @@ class DeploymentService:
                     self.logger.error(f"Hadolint ошибка: {hadolint_result['error']}")
                     return self.result
 
+            image_source = form_data.get("docker_image_source", "tar")
+            full_image_name = validated_data.get("app_deploy_image_name", "")
+
+            if image_source == "registry":
+                registry_url = form_data.get("registry_url", "")
+                registry_username = form_data.get("registry_username", "")
+                registry_password = form_data.get("registry_password", "")
+
+                # Docker login при наличии кредов
+                if registry_username and registry_password:
+                    self.logger.info(f"Вход в registry {registry_url}...")
+                    login_cmd = [
+                        "docker", "login",
+                        registry_url,
+                        "-u", registry_username,
+                        "--password-stdin",
+                    ]
+                    try:
+                        login_result = subprocess.run(
+                            login_cmd,
+                            input=registry_password,
+                            capture_output=True,
+                            text=True,
+                            timeout=120,
+                        )
+                        if login_result.returncode != 0:
+                            self.status = "error"
+                            self.result = {
+                                "error": "Docker login failed",
+                                "details": login_result.stderr,
+                            }
+                            self.logger.error(
+                                f"Docker login ошибка: {login_result.stderr}"
+                            )
+                            return self.result
+                        self.logger.info("Успешный вход в registry")
+                    except subprocess.TimeoutExpired:
+                        self.status = "error"
+                        self.result = {"error": "Docker login timeout"}
+                        self.logger.error("Docker login превысил время ожидания")
+                        return self.result
+
+                # Docker pull образа
+                self.logger.info(f"Загрузка образа {full_image_name}...")
+                pull_cmd = ["docker", "pull", full_image_name]
+                try:
+                    pull_result = subprocess.run(
+                        pull_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=3600,
+                    )
+                    if pull_result.returncode != 0:
+                        self.status = "error"
+                        self.result = {
+                            "error": "Docker pull failed",
+                            "details": pull_result.stderr,
+                        }
+                        self.logger.error(
+                            f"Docker pull ошибка: {pull_result.stderr}"
+                        )
+                        return self.result
+                    self.logger.info(f"Образ {full_image_name} успешно загружен")
+                except subprocess.TimeoutExpired:
+                    self.status = "error"
+                    self.result = {"error": "Docker pull timeout"}
+                    self.logger.error("Docker pull превысил время ожидания")
+                    return self.result
+
             if form_data.get("enable_trivy") == "on":
                 trivy_fail_on = form_data.get("trivy_fail_on", "HIGH")
                 self.logger.info(
                     f"Сканирование образа (Trivy), порог блокировки: {trivy_fail_on}..."
                 )
 
-                trivy_result = scan_image(image_path, fail_on_severity=trivy_fail_on)
+                if image_source == "registry":
+                    trivy_result = scan_image(
+                        full_image_name, fail_on_severity=trivy_fail_on, is_tar=False
+                    )
+                else:
+                    trivy_result = scan_image(image_path, fail_on_severity=trivy_fail_on)
 
                 if not trivy_result["success"]:
                     self.status = "error"
@@ -126,6 +201,13 @@ class DeploymentService:
             )
 
             self.logger.info("Запуск Ansible playbook...")
+            # Для режима registry передаём имя образа с полным путём (registry/image:tag)
+            # Для режима tar передаём путь к архиву
+            if image_source == "registry":
+                app_deploy_image_path = ""
+            else:
+                app_deploy_image_path = image_path
+
             extra_vars = {
                 "ssh_hardening_port": validated_data.get(
                     "ssh_hardening_port", validated_data["ansible_port"]
@@ -133,7 +215,11 @@ class DeploymentService:
                 "ssh_fail2ban_configuration_port": validated_data.get(
                     "ssh_hardening_port", validated_data["ansible_port"]
                 ),
-                "app_deploy_image_path": image_path,
+                "app_deploy_image_path": app_deploy_image_path,
+                "docker_image_source": image_source,
+                "registry_url": form_data.get("registry_url", ""),
+                "registry_username": form_data.get("registry_username", ""),
+                "registry_password": form_data.get("registry_password", ""),
                 "selinux_configuration_state": (
                     "enforcing"
                     if form_data.get("enable_selinux") == "on"
@@ -220,3 +306,20 @@ class DeploymentService:
             cleanup_specific_files(file_paths)
             if inventory_path:
                 cleanup_specific_files({"inventory": inventory_path})
+
+            # Выход из registry если был вход
+            image_source = form_data.get("docker_image_source", "tar")
+            if image_source == "registry":
+                registry_url = form_data.get("registry_url", "")
+                registry_username = form_data.get("registry_username", "")
+                if registry_url and registry_username:
+                    try:
+                        self.logger.info(f"Выход из registry {registry_url}...")
+                        subprocess.run(
+                            ["docker", "logout", registry_url],
+                            capture_output=True,
+                            text=True,
+                            timeout=30,
+                        )
+                    except Exception:
+                        pass  # Игнорируем ошибки logout

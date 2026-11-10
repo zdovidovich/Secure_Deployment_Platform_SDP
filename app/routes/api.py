@@ -27,10 +27,13 @@ def _check_api_key():
 def _build_file_paths():
     file_paths = {
         "ssh_key": save_temp_file(request.files.get("ssh_key"), "ssh_key_"),
-        "docker_image": save_temp_file(
-            request.files.get("docker_image"), "docker_image_"
-        ),
     }
+
+    docker_image_file = request.files.get("docker_image")
+    if docker_image_file and docker_image_file.filename:
+        file_paths["docker_image"] = save_temp_file(
+            docker_image_file, "docker_image_"
+        )
 
     if request.files.get("dockerfile") and request.files["dockerfile"].filename:
         file_paths["dockerfile"] = save_temp_file(
@@ -51,12 +54,12 @@ def create_deployment():
     if auth_error:
         return auth_error
 
-    if not request.files.get("ssh_key") or not request.files.get("docker_image"):
+    if not request.files.get("ssh_key"):
         return (
             jsonify(
                 {
-                    "error": "Both files are required",
-                    "required_files": ["ssh_key", "docker_image"],
+                    "error": "SSH key is required",
+                    "required_files": ["ssh_key"],
                 }
             ),
             400,
