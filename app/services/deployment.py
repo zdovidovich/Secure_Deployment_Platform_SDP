@@ -10,7 +10,7 @@ from libs.telegram_notifier import (
     notify_deploy_success,
 )
 from libs.temp_files import cleanup_specific_files, create_inventory_temp_file
-from libs.trivy import format_trivy_result, scan_image
+from libs.trivy import format_trivy_result, scan_image, scan_image_by_name
 from libs.validation import validate_all_data
 from sse.broadcaster import SSEBroadcaster
 
@@ -281,13 +281,24 @@ class DeploymentService:
             def _flag(name: str) -> bool:
                 return _scalar(form_data.get(name)) in ("on", "true", "1")
 
+            image_source = _scalar(form_data.get("image_source")) or "tar"
+
             if _flag("enable_trivy"):
                 trivy_fail_on = _scalar(form_data.get("trivy_fail_on"), "HIGH")
                 self.logger.info(
                     f"Сканирование образа (Trivy), порог блокировки: {trivy_fail_on}..."
                 )
 
-                trivy_result = scan_image(image_path, fail_on_severity=trivy_fail_on)
+                if image_source == "registry":
+                    trivy_result = scan_image_by_name(
+                        validated_data["app_deploy_image_name"],
+                        fail_on_severity=trivy_fail_on,
+                        registry=_scalar(form_data.get("app_deploy_registry")),
+                        username=_scalar(form_data.get("app_deploy_registry_username")),
+                        password=_scalar(form_data.get("app_deploy_registry_credential")),
+                    )
+                else:
+                    trivy_result = scan_image(image_path, fail_on_severity=trivy_fail_on)
 
                 if not trivy_result["success"]:
                     self.status = "error"
@@ -363,6 +374,14 @@ class DeploymentService:
                 "ssh_fail2ban_state": _flag("enable_fail2ban_for_ssh"),
                 "ssh_hardening_disable_pass": _flag("ssh_hardening_disable_pass"),
                 "app_deploy_image_name": validated_data["app_deploy_image_name"],
+                "app_deploy_image_source": image_source,
+                "app_deploy_registry": _scalar(form_data.get("app_deploy_registry")),
+                "app_deploy_registry_username": _scalar(
+                    form_data.get("app_deploy_registry_username")
+                ),
+                "app_deploy_registry_credential": _scalar(
+                    form_data.get("app_deploy_registry_credential")
+                ),
                 "app_deploy_container_name": validated_data[
                     "app_deploy_container_name"
                 ],

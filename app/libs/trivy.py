@@ -1,5 +1,6 @@
 from .scanner_base import run_binary_scanner
 import os
+from typing import Optional
 
 TRIVY_PATH = os.getenv("TRIVY_PATH", "trivy")
 
@@ -29,6 +30,105 @@ def scan_image(image_path: str, fail_on_severity: str = "HIGH") -> dict:
             "0",
             "--no-progress",
         ],
+        parse_json=True,
+    )
+
+    if not success:
+        return {
+            "success": False,
+            "vulnerabilities": [],
+            "blocked": False,
+            "error": error,
+        }
+
+    vulnerabilities = []
+    if isinstance(output, dict) and "Results" in output:
+        for result in output["Results"]:
+            if "Vulnerabilities" in result:
+                vulnerabilities.extend(result["Vulnerabilities"])
+
+    severity_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}
+
+    for vuln in vulnerabilities:
+        sev = vuln.get("Severity", "UNKNOWN").upper()
+        if sev in severity_counts:
+            severity_counts[sev] += 1
+
+    blocked = False
+    blocking_count = 0
+    blocking_severity = None
+
+    if fail_on_severity and fail_on_severity != "NONE":
+        try:
+            fail_index = SEVERITY_ORDER.index(fail_on_severity.upper())
+        except ValueError:
+            fail_index = SEVERITY_ORDER.index("HIGH")
+
+        for i in range(fail_index, len(SEVERITY_ORDER)):
+            level = SEVERITY_ORDER[i]
+            blocking_count += severity_counts.get(level, 0)
+
+        if blocking_count > 0:
+            blocked = True
+            blocking_severity = fail_on_severity.upper()
+
+    return {
+        "success": True,
+        "vulnerabilities": vulnerabilities,
+        "blocked": blocked,
+        "blocking_count": blocking_count,
+        "blocking_severity": blocking_severity,
+        "severity_counts": severity_counts,
+        "critical_count": severity_counts["CRITICAL"],
+        "high_count": severity_counts["HIGH"],
+        "medium_count": severity_counts["MEDIUM"],
+        "low_count": severity_counts["LOW"],
+        "error": None,
+    }
+
+
+def scan_image_by_name(
+    image_name: str,
+    fail_on_severity: str = "HIGH",
+    registry: Optional[str] = None,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
+) -> dict:
+    """
+    Запускает Trivy для сканирования Docker-образа из реестра по имени.
+
+    Trivy сам скачивает образ из реестра (Docker Hub, если registry не указан,
+    иначе указанный реестр) и сканирует его.
+
+    Args:
+        image_name: Имя/ссылка на образ (например: myapp:latest или registry.example.com/myapp:latest).
+        fail_on_severity: Порог блокировки ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'NONE').
+        registry: Адрес реестра (опционально). Используется контекстом аутентификации.
+        username: Логин реестра (опционально).
+        password: Пароль/токен реестра (опционально).
+
+    Returns:
+        dict с результатами сканирования и решением о блокировке (как scan_image).
+    """
+    SEVERITY_ORDER = ["UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL"]
+
+    args = [
+        "image",
+        image_name,
+        "--format",
+        "json",
+        "--exit-code",
+        "0",
+        "--no-progress",
+    ]
+    if username:
+        args += ["--username", username]
+    if password:
+        args += ["--password", password]
+
+    success, output, error = run_binary_scanner(
+        binary_path=TRIVY_PATH,
+        args=args,
         parse_json=True,
     )
 

@@ -25,12 +25,18 @@ def _check_api_key():
 
 
 def _build_file_paths():
+    image_source = (request.form.get("image_source") or "tar").strip()
+
     file_paths = {
         "ssh_key": save_temp_file(request.files.get("ssh_key"), "ssh_key_"),
-        "docker_image": save_temp_file(
-            request.files.get("docker_image"), "docker_image_"
-        ),
+        "docker_image": None,
     }
+
+    # tar-архив требуется только в режиме загрузки файла
+    if image_source == "tar":
+        file_paths["docker_image"] = save_temp_file(
+            request.files.get("docker_image"), "docker_image_"
+        )
 
     if request.files.get("dockerfile") and request.files["dockerfile"].filename:
         file_paths["dockerfile"] = save_temp_file(
@@ -64,11 +70,24 @@ def create_deployment():
     if auth_error:
         return auth_error
 
-    if not request.files.get("ssh_key") or not request.files.get("docker_image"):
+    image_source = (request.form.get("image_source") or "tar").strip()
+
+    if not request.files.get("ssh_key"):
         return (
             jsonify(
                 {
-                    "error": "Both files are required",
+                    "error": "SSH key is required",
+                    "required_files": ["ssh_key"],
+                }
+            ),
+            400,
+        )
+
+    if image_source == "tar" and not request.files.get("docker_image"):
+        return (
+            jsonify(
+                {
+                    "error": "Docker image tar archive is required",
                     "required_files": ["ssh_key", "docker_image"],
                 }
             ),

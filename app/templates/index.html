@@ -165,24 +165,72 @@
 
                 <div class="form-section">
                     <h3>Docker образ</h3>
+
                     <div class="form-group full-width">
-                        <label for="docker_image">Файл образа (.tar) <span class="required">*</span></label>
-                        <label class="file-upload" for="docker_image">
-                            <input type="file" id="docker_image" name="docker_image" accept=".tar" required>
-                            <span class="file-upload-label">
-                                <span>Выберите Docker image tar</span>
-                            </span>
-                        </label>
-                        <div class="file-name" id="docker_image_name"></div>
-                        <div class="hint">Создайте через: <code>docker save -o image.tar name:tag</code></div>
-                        <div class="form-group">
-                            <label>Опции сканирования</label>
-                            <div class="checkbox-group">
-                                <div class="checkbox-item">
-                                    <input type="checkbox" id="enable_trivy" name="enable_trivy" checked>
-                                    <label for="enable_trivy">Сканирование образа с помощью Trivy</label>
-                                </div>
+                        <label>Способ подачи образа</label>
+                        <div class="checkbox-group" style="flex-direction: row; gap: 1.5rem; max-width: fit-content;">
+                            <div class="checkbox-item">
+                                <input type="radio" id="image_source_tar" name="image_source" value="tar" checked>
+                                <label for="image_source_tar">Из tar-архива</label>
                             </div>
+                            <div class="checkbox-item">
+                                <input type="radio" id="image_source_registry" name="image_source" value="registry">
+                                <label for="image_source_registry">Из реестра (по имени)</label>
+                            </div>
+                        </div>
+                        <div class="hint" id="image-source-hint">
+                            Загрузите tar-архив, созданный через <code>docker save -o image.tar name:tag</code>.
+                        </div>
+                    </div>
+
+                    <!-- Tar-архив (docker save) -->
+                    <div id="docker-image-tar-group">
+                        <div class="form-group full-width">
+                            <label for="docker_image">Файл образа (.tar) <span class="required">*</span></label>
+                            <label class="file-upload" for="docker_image">
+                                <input type="file" id="docker_image" name="docker_image" accept=".tar" required>
+                                <span class="file-upload-label">
+                                    <span>Выберите Docker image tar</span>
+                                </span>
+                            </label>
+                            <div class="file-name" id="docker_image_name"></div>
+                        </div>
+                    </div>
+
+                    <!-- Образ из реестра -->
+                    <div id="docker-image-registry-group" style="display: none;">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="app_deploy_registry">Реестр Docker</label>
+                                <input type="text" id="app_deploy_registry" name="app_deploy_registry"
+                                    placeholder="registry.example.com">
+                                <div class="hint">Например: docker.io, ghcr.io, registry.gitlab.com. Оставьте пустым
+                                    для Docker Hub.</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="app_deploy_registry_username">Логин реестра (опционально)</label>
+                                <input type="text" id="app_deploy_registry_username"
+                                    name="app_deploy_registry_username" placeholder="Логин">
+                                <div class="hint">Оставьте пустым для публичных образов.</div>
+                            </div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="app_deploy_registry_credential">Пароль/токен реестра (опционально)</label>
+                            <input type="password" id="app_deploy_registry_credential"
+                                name="app_deploy_registry_credential" placeholder="Пароль или токен">
+                            <div class="hint">Используется для аутентификации в приватном реестре перед скачиванием
+                                образа.</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Опции сканирования</label>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="enable_trivy" name="enable_trivy" checked>
+                                <label for="enable_trivy">Сканирование образа с помощью Trivy</label>
+                            </div>
+                        </div>
 
                             <div class="form-subgroup" id="trivy-threshold-group"
                                 style="margin-top: 1rem; padding-left: 1.5rem; border-left: 2px solid var(--border);">
@@ -216,7 +264,6 @@
                         <div class="file-name" id="dockerfile_name"></div>
                         <div class="hint">Если предоставлен — будет выполнен статический анализ через Hadolint</div>
                     </div>
-                </div>
 
                 <div class="form-section">
                     <h3>Docker контейнер</h3>
@@ -231,6 +278,7 @@
                             <label for="app_deploy_image_name">Имя образа <span class="required">*</span></label>
                             <input type="text" id="app_deploy_image_name" name="app_deploy_image_name" placeholder="myapp:latest"
                                 required>
+                            <div id="image-name-hint" class="hint"></div>
                         </div>
                     </div>
 
@@ -311,6 +359,48 @@
         setupFileInput('ssh_key', 'ssh_key_name');
         setupFileInput('docker_image', 'docker_image_name');
         setupFileInput('dockerfile', 'dockerfile_name');
+
+        // --- Переключение способа подачи Docker-образа (tar-архив / реестр) ---
+        const imageSourceRadios = document.querySelectorAll('input[name="image_source"]');
+        const tarGroup = document.getElementById('docker-image-tar-group');
+        const registryGroup = document.getElementById('docker-image-registry-group');
+        const dockerImageInput = document.getElementById('docker_image');
+        const imageNameHint = document.getElementById('image-name-hint');
+        const imageSourceHint = document.getElementById('image-source-hint');
+
+        function toggleImageSource() {
+            const isRegistry = document.getElementById('image_source_registry').checked;
+            tarGroup.style.display = isRegistry ? 'none' : '';
+            registryGroup.style.display = isRegistry ? '' : 'none';
+
+            // В режиме реестра файл tar не требуется
+            if (dockerImageInput) {
+                dockerImageInput.required = !isRegistry;
+                if (isRegistry) {
+                    dockerImageInput.value = '';
+                }
+            }
+
+            if (imageNameHint) {
+                if (isRegistry) {
+                    imageNameHint.innerHTML = 'Полная ссылка на образ, например <code>registry.example.com/myapp:latest</code> ' +
+                        'или <code>myapp:latest</code> для Docker Hub.';
+                } else {
+                    imageNameHint.innerHTML = 'Имя образа, которое должно совпадать с тегом внутри tar-архива.';
+                }
+            }
+            if (imageSourceHint) {
+                imageSourceHint.innerHTML = isRegistry
+                    ? 'Укажите ссылку на образ и (для приватного реестра) логин и пароль/токен.'
+                    : 'Загрузите tar-архив, созданный через <code>docker save -o image.tar name:tag</code>.';
+            }
+        }
+
+        imageSourceRadios.forEach(radio => {
+            radio.addEventListener('change', toggleImageSource);
+        });
+
+        toggleImageSource();
 
         // Telegram chat id: запоминаем между запусками в localStorage
         const telegramInput = document.getElementById('telegram_chat_id');

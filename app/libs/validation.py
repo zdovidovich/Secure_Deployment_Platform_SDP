@@ -138,6 +138,26 @@ DEPLOY_FORM_RULES: Dict[str, ValidationRule] = {
         error_msg="Неправильно заданы порты для fail2ban",
         required=False,
     ),
+    "image_source": ValidationRule(
+        pattern=r"^(tar|registry)$",
+        error_msg="Способ подачи образа должен быть 'tar' или 'registry'",
+        required=True,
+    ),
+    "app_deploy_registry": ValidationRule(
+        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9.-]*(:\d+)?$",
+        error_msg="Неверный формат адреса реестра (например: registry.example.com или registry.example.com:5000)",
+        required=False,
+    ),
+    "app_deploy_registry_username": ValidationRule(
+        pattern=r"^.*$",
+        error_msg="Неверный формат логина реестра",
+        required=False,
+    ),
+    "app_deploy_registry_credential": ValidationRule(
+        pattern=r"^.*$",
+        error_msg="Неверный формат пароля/токена реестра",
+        required=False,
+    ),
 }
 
 
@@ -251,8 +271,15 @@ def validate_all_data(
     Полная валидация всех данных.
     Возвращает (success, errors, validated_data)
     """
-    if not file_path_image or not file_path_private_ssh_key:
-        return False, ["Не загружены файлы (образ или ключ)"], {}
+    if not file_path_private_ssh_key:
+        return False, ["Не загружен приватный SSH-ключ"], {}
+
+    image_source = _scalar_form_value(form_data.get("image_source")) or "tar"
+
+    # tar-архив требуется только в режиме загрузки файла
+    if image_source == "tar" and not file_path_image:
+        return False, ["Не загружен tar-архив с образом"], {}
+
     is_valid, errors, validated_data = validate_form_data(form_data)
 
     servers, server_errors = parse_servers_from_form(form_data)
@@ -283,7 +310,7 @@ def validate_all_data(
         if "\n" in regex or "\r" in regex or "\x00" in regex:
             errors.append("app_fail2ban_regex: Содержит недопустимые символы")
 
-    if not validate_tar_archive(file_path_image):
+    if image_source == "tar" and not validate_tar_archive(file_path_image):
         is_valid = False
         errors.append("docker_image: Неверный формат Docker образа (не TAR)")
 

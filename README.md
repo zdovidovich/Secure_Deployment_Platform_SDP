@@ -49,14 +49,25 @@ The application now exposes a lightweight HTTP API from the same monolith.
 - `GET /api/v1/deployments/<deployment_id>` - get deployment status/result
 - `GET /api/v1/deployments/<deployment_id>/events` - stream deployment logs over SSE
 
-`POST /api/v1/deployments` expects `multipart/form-data` with the same fields as the web form and these required files:
+`POST /api/v1/deployments` expects `multipart/form-data` with the same fields as the web form.
 
-- `ssh_key`
-- `docker_image`
+Required:
+
+- `ssh_key` (SSH private key file)
+
+The image can be provided in one of two ways (select via `image_source` field, default `tar`):
+
+1. **Tar archive** (`image_source=tar`) — upload a `docker save` archive:
+   - `docker_image` (required) — `.tar` archive created with `docker save -o image.tar name:tag`
+2. **Registry image** (`image_source=registry`) — pull an image from a registry on the target server:
+   - `app_deploy_image_name` — full image reference (e.g. `myapp:latest` or `registry.example.com/myapp:latest`)
+   - `app_deploy_registry` (optional) — registry address, e.g. `ghcr.io` or `registry.example.com:5000` (empty = Docker Hub)
+   - `app_deploy_registry_username` (optional) — registry login
+   - `app_deploy_registry_credential` (optional) — registry password/token
 
 Optional:
 
-- `dockerfile`
+- `dockerfile` — Dockerfile for Hadolint static analysis
 
 If `SDP_API_KEY` is set in the environment, API requests must include header `X-API-Key: <value>`.
 
