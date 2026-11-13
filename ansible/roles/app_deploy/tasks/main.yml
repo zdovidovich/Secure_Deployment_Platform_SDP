@@ -32,7 +32,7 @@
 
     - name: Login to docker registry
       community.docker.docker_login:
-        registry: "{{ app_deploy_registry | default('') }}"
+        registry: "{{ app_deploy_registry | default('https://index.docker.io/v1/') }}"
         username: "{{ app_deploy_registry_username | default('') }}"
         password: "{{ app_deploy_registry_credential | default('') }}"
       no_log: true

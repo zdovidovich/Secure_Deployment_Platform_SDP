@@ -283,6 +283,14 @@ class DeploymentService:
 
             image_source = _scalar(form_data.get("image_source")) or "tar"
 
+            # Реестр определяется автоматически из ссылки на образ:
+            # первый сегмент (до первого /), содержащий точку или порт, считается реестром.
+            image_name = validated_data.get("app_deploy_image_name", "")
+            first_segment = image_name.split("/", 1)[0] if "/" in image_name else image_name
+            derived_registry = (
+                first_segment if ("." in first_segment or ":" in first_segment) else "https://index.docker.io/v1/"
+            )
+
             if _flag("enable_trivy"):
                 trivy_fail_on = _scalar(form_data.get("trivy_fail_on"), "HIGH")
                 self.logger.info(
@@ -291,9 +299,8 @@ class DeploymentService:
 
                 if image_source == "registry":
                     trivy_result = scan_image_by_name(
-                        validated_data["app_deploy_image_name"],
+                        image_name,
                         fail_on_severity=trivy_fail_on,
-                        registry=_scalar(form_data.get("app_deploy_registry")),
                         username=_scalar(form_data.get("app_deploy_registry_username")),
                         password=_scalar(form_data.get("app_deploy_registry_credential")),
                     )
@@ -375,7 +382,7 @@ class DeploymentService:
                 "ssh_hardening_disable_pass": _flag("ssh_hardening_disable_pass"),
                 "app_deploy_image_name": validated_data["app_deploy_image_name"],
                 "app_deploy_image_source": image_source,
-                "app_deploy_registry": _scalar(form_data.get("app_deploy_registry")),
+                "app_deploy_registry": derived_registry,
                 "app_deploy_registry_username": _scalar(
                     form_data.get("app_deploy_registry_username")
                 ),

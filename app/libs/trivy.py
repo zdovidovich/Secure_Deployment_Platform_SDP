@@ -90,20 +90,19 @@ def scan_image(image_path: str, fail_on_severity: str = "HIGH") -> dict:
 def scan_image_by_name(
     image_name: str,
     fail_on_severity: str = "HIGH",
-    registry: Optional[str] = None,
     username: Optional[str] = None,
     password: Optional[str] = None,
 ) -> dict:
     """
     Запускает Trivy для сканирования Docker-образа из реестра по имени.
 
-    Trivy сам скачивает образ из реестра (Docker Hub, если registry не указан,
-    иначе указанный реестр) и сканирует его.
+    Trivy сам скачивает образ из реестра (Docker Hub, если в имени образа не
+    указан реестр, иначе указанный реестр) и сканирует его. Аутентификация
+    передаётся через --username/--password.
 
     Args:
         image_name: Имя/ссылка на образ (например: myapp:latest или registry.example.com/myapp:latest).
         fail_on_severity: Порог блокировки ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'NONE').
-        registry: Адрес реестра (опционально). Используется контекстом аутентификации.
         username: Логин реестра (опционально).
         password: Пароль/токен реестра (опционально).
 

@@ -199,27 +199,18 @@
 
                     <!-- Образ из реестра -->
                     <div id="docker-image-registry-group" style="display: none;">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="app_deploy_registry">Реестр Docker</label>
-                                <input type="text" id="app_deploy_registry" name="app_deploy_registry"
-                                    placeholder="registry.example.com">
-                                <div class="hint">Например: docker.io, ghcr.io, registry.gitlab.com. Оставьте пустым
-                                    для Docker Hub.</div>
-                            </div>
-                            <div class="form-group">
-                                <label for="app_deploy_registry_username">Логин реестра (опционально)</label>
-                                <input type="text" id="app_deploy_registry_username"
-                                    name="app_deploy_registry_username" placeholder="Логин">
-                                <div class="hint">Оставьте пустым для публичных образов.</div>
-                            </div>
+                        <div class="form-group">
+                            <label for="app_deploy_registry_username">Логин реестра (опционально)</label>
+                            <input type="text" id="app_deploy_registry_username"
+                                name="app_deploy_registry_username" placeholder="Логин">
+                            <div class="hint">Оставьте пустым для публичных образов.</div>
                         </div>
                         <div class="form-group full-width">
                             <label for="app_deploy_registry_credential">Пароль/токен реестра (опционально)</label>
                             <input type="password" id="app_deploy_registry_credential"
                                 name="app_deploy_registry_credential" placeholder="Пароль или токен">
                             <div class="hint">Используется для аутентификации в приватном реестре перед скачиванием
-                                образа.</div>
+                                образа. Реестр определяется автоматически из ссылки на образ.</div>
                         </div>
                     </div>
 
@@ -384,7 +375,7 @@
             if (imageNameHint) {
                 if (isRegistry) {
                     imageNameHint.innerHTML = 'Полная ссылка на образ, например <code>registry.example.com/myapp:latest</code> ' +
-                        'или <code>myapp:latest</code> для Docker Hub.';
+                        'или <code>myapp:latest</code> для Docker Hub. Реестр определяется автоматически.';
                 } else {
                     imageNameHint.innerHTML = 'Имя образа, которое должно совпадать с тегом внутри tar-архива.';
                 }

@@ -143,11 +143,6 @@ DEPLOY_FORM_RULES: Dict[str, ValidationRule] = {
         error_msg="Способ подачи образа должен быть 'tar' или 'registry'",
         required=True,
     ),
-    "app_deploy_registry": ValidationRule(
-        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9.-]*(:\d+)?$",
-        error_msg="Неверный формат адреса реестра (например: registry.example.com или registry.example.com:5000)",
-        required=False,
-    ),
     "app_deploy_registry_username": ValidationRule(
         pattern=r"^.*$",
         error_msg="Неверный формат логина реестра",
