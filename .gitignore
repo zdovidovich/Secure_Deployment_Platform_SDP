@@ -1,7 +1,4 @@
-env
-artifacts
-__pycache__
+__pycache__/
 *.pyc
-.ruff_cache
-.venv
-inventory
+*.log
+*.tmp
